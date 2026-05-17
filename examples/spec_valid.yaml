@@ -1,0 +1,29 @@
+specVersion: 1
+target:
+  language: python
+  framework: fastapi
+  pythonVersion: "3.12"
+  packaging: poetry
+service:
+  name: orders
+  description: Minimal valid spec
+api:
+  basePath: /api/v1
+  endpoints:
+    - name: listOrders
+      path: /orders
+      method: GET
+models:
+  - name: Order
+    fields:
+      - name: id
+        type: uuid
+      - name: status
+        type: string
+    queries:
+      - name: by_status
+        params:
+          - field: status
+            op: eq
+    features:
+      repository: true

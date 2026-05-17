@@ -1,0 +1,24 @@
+specVersion: 1
+target:
+  language: python
+  framework: fastapi
+  pythonVersion: "3.12"
+  packaging: poetry
+service:
+  name: orders
+api:
+  basePath: /api/v1
+models:
+  - name: Order
+    fields:
+      - name: id
+        type: uuid
+      - name: status
+        type: string
+    queries:
+      - name: by_missing_field
+        params:
+          - field: created_at
+            op: eq
+    features:
+      repository: false

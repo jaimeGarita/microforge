@@ -1,0 +1,63 @@
+import pathlib
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from microforge.api.v1.routes import router
+
+app = FastAPI(title="microforge API")
+app.include_router(router, prefix="/api/v1")
+
+
+def _read_bytes(path: str) -> bytes:
+    return pathlib.Path(path).read_bytes()
+
+
+def test_health_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_validate_accepts_valid_yaml() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/validate",
+        files={"file": ("spec_valid.yaml", _read_bytes("examples/spec_valid.yaml"), "application/yaml")},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+
+
+def test_validate_rejects_invalid_extension() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/validate",
+        files={"file": ("spec.txt", b"specVersion: 1", "text/plain")},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Only .yaml/.yml files are accepted"
+
+
+def test_validate_returns_all_semantic_errors() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/validate",
+        files={"file": ("spec_invalid.yaml", _read_bytes("examples/spec_invalid.yaml"), "application/yaml")},
+    )
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert isinstance(detail, list)
+    assert len(detail) == 2
+    assert all(item["model"] == "Order" for item in detail)
+
+
+def test_validate_rejects_invalid_structure() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/validate",
+        files={"file": ("empty.yaml", b"[]", "application/yaml")},
+    )
+    assert response.status_code == 400
+    assert "Invalid spec structure" in response.json()["detail"]
