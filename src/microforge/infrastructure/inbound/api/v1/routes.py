@@ -6,9 +6,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from microforge.api.v1.providers import get_validate_service
-from microforge.application.spec.validate_spec import ValidateSpecService
+from microforge.application.spec.ports.inbound import ValidateSpecPort
 from microforge.domain.spec.errors import SpecError, SpecValidationErrors
+from microforge.infrastructure.inbound.api.v1.providers import get_validate_spec_port
 
 router = APIRouter()
 SUPPORTED_EXT = (".yaml", ".yml")
@@ -23,7 +23,7 @@ def health() -> dict[str, str]:
 @router.post("/spec/validate")
 async def validate_spec(
     file: Annotated[UploadFile, File(...)],
-    service: Annotated[ValidateSpecService, Depends(get_validate_service)],
+    service: Annotated[ValidateSpecPort, Depends(get_validate_spec_port)],
 ) -> dict[str, bool]:
     """Validate a YAML spec uploaded as multipart/form-data."""
     filename = (file.filename or "").lower()

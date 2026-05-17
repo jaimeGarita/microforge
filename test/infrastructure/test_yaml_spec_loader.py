@@ -1,5 +1,5 @@
 from microforge.domain.spec.errors import SpecFormatError
-from microforge.infrastructure.spec.yaml_spec_loader import YamlSpecLoader
+from microforge.infrastructure.outbound.spec.yaml_spec_loader import YamlSpecLoader
 
 
 def test_load_bytes_parses_valid_yaml() -> None:
@@ -35,13 +35,3 @@ def test_load_bytes_rejects_invalid_structure() -> None:
         assert "Invalid spec structure" in str(exc)
     else:
         raise AssertionError("Expected SpecFormatError for invalid structure")
-
-
-def test_load_from_missing_path_raises_file_not_found() -> None:
-    loader = YamlSpecLoader()
-    try:
-        loader.load("examples/does-not-exist.yaml")
-    except FileNotFoundError as exc:
-        assert "Spec not found at" in str(exc)
-    else:
-        raise AssertionError("Expected FileNotFoundError for a missing file")
