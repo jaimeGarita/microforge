@@ -6,9 +6,9 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
-from microforge.application.spec_ports import SpecLoaderPort
-from microforge.domain.spec_errors import SpecFormatError
-from microforge.domain.spec_models import SpecV1
+from microforge.application.spec.ports import SpecLoaderPort
+from microforge.domain.spec.errors import SpecFormatError
+from microforge.domain.spec.models import SpecV1
 
 
 class YamlSpecLoader(SpecLoaderPort):

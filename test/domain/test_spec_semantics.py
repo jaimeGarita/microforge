@@ -3,9 +3,9 @@ import pathlib
 import pytest
 import yaml
 
-from microforge.domain.spec_errors import SpecValidationErrors
-from microforge.domain.spec_models import SpecV1
-from microforge.domain.spec_semantics import validate_semantics
+from microforge.domain.spec.errors import SpecValidationErrors
+from microforge.domain.spec.models import SpecV1
+from microforge.domain.spec.semantics import validate_semantics
 
 
 def _load_yaml(path: str) -> dict:

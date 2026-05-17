@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from microforge.domain.spec_errors import SpecSemanticError, SpecValidationErrors
-from microforge.domain.spec_models import SpecV1
-from microforge.domain.spec_types import TargetFramework, TargetLanguage
+from microforge.domain.spec.errors import SpecSemanticError, SpecValidationErrors
+from microforge.domain.spec.models import SpecV1
+from microforge.domain.spec.types import TargetFramework, TargetLanguage
 
 
 def validate_semantics(spec: SpecV1) -> None:

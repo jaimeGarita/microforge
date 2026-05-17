@@ -3,10 +3,10 @@ import pathlib
 import pytest
 import yaml
 
-from microforge.application.spec_ports import SpecLoaderPort
-from microforge.application.spec_validation_service import ValidateSpecService
-from microforge.domain.spec_errors import SpecValidationErrors
-from microforge.domain.spec_models import SpecV1
+from microforge.application.spec.ports import SpecLoaderPort
+from microforge.application.spec.validate_spec import ValidateSpecService
+from microforge.domain.spec.errors import SpecValidationErrors
+from microforge.domain.spec.models import SpecV1
 
 
 class InMemoryLoader(SpecLoaderPort):

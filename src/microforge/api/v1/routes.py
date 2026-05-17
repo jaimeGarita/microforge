@@ -7,8 +7,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from microforge.api.v1.providers import get_validate_service
-from microforge.application.spec_validation_service import ValidateSpecService
-from microforge.domain.spec_errors import SpecError, SpecValidationErrors
+from microforge.application.spec.validate_spec import ValidateSpecService
+from microforge.domain.spec.errors import SpecError, SpecValidationErrors
 
 router = APIRouter()
 SUPPORTED_EXT = (".yaml", ".yml")

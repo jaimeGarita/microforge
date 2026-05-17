@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from microforge.domain.spec_models import SpecV1
+from microforge.domain.spec.models import SpecV1
 
 
 class SpecLoaderPort(Protocol):

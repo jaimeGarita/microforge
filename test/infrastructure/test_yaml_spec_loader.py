@@ -1,5 +1,5 @@
-from microforge.domain.spec_errors import SpecFormatError
-from microforge.infrastructure.yaml_spec_loader import YamlSpecLoader
+from microforge.domain.spec.errors import SpecFormatError
+from microforge.infrastructure.spec.yaml_spec_loader import YamlSpecLoader
 
 
 def test_load_bytes_parses_valid_yaml() -> None:

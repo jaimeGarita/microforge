@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from microforge.application.spec_validation_service import ValidateSpecService
-from microforge.infrastructure.yaml_spec_loader import YamlSpecLoader
+from microforge.application.spec.validate_spec import ValidateSpecService
+from microforge.infrastructure.spec.yaml_spec_loader import YamlSpecLoader
 
 
 @lru_cache(maxsize=1)

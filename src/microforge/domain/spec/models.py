@@ -4,7 +4,7 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from microforge.domain.spec_types import (
+from microforge.domain.spec.types import (
     ApiHttpMethod,
     FieldType,
     Packaging,

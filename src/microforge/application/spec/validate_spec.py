@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from microforge.application.spec_ports import SpecLoaderPort
-from microforge.domain.spec_semantics import validate_semantics
+from microforge.application.spec.ports import SpecLoaderPort
+from microforge.domain.spec.semantics import validate_semantics
 
 
 class ValidateSpecService:
