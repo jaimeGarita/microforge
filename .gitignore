@@ -4,3 +4,5 @@
 /.venv
 /.vscode
 /uv.lock
+.coverage
+htmlcov/
