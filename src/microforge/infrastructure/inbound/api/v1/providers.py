@@ -8,8 +8,8 @@ from microforge.application.generation.ports.inbound import GenerateProjectPort
 from microforge.application.generation.use_cases.generate_project import GenerateProjectUseCase
 from microforge.application.spec.ports.inbound import ValidateSpecPort
 from microforge.application.spec.use_cases.validate_spec import ValidateSpecUseCase
-from microforge.infrastructure.outbound.generation.fastapi_project_generator import (
-    FastApiProjectGenerator,
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.generator import (
+    PythonFastApiProjectGenerator,
 )
 from microforge.infrastructure.outbound.generation.zip_project_packager import ZipProjectPackager
 from microforge.infrastructure.outbound.spec.yaml_spec_loader import YamlSpecLoader
@@ -28,9 +28,9 @@ def get_validate_spec_port() -> ValidateSpecPort:
 
 
 @lru_cache(maxsize=1)
-def get_project_generator() -> FastApiProjectGenerator:
+def get_project_generator() -> PythonFastApiProjectGenerator:
     """Provide a singleton project generator."""
-    return FastApiProjectGenerator()
+    return PythonFastApiProjectGenerator()
 
 
 @lru_cache(maxsize=1)

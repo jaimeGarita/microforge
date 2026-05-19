@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import PurePath
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
@@ -58,7 +59,7 @@ async def generate_project(
     return Response(
         content=zip_content,
         media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="microforge-project.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="{_zip_filename(file)}"'},
     )
 
 
@@ -70,3 +71,13 @@ async def _read_yaml_upload(file: UploadFile) -> bytes:
             detail="Only .yaml/.yml files are accepted",
         )
     return await file.read()
+
+
+def _zip_filename(file: UploadFile) -> str:
+    filename = PurePath(file.filename or "microforge-project.yaml").name
+    lower_filename = filename.lower()
+    if lower_filename.endswith(".yaml"):
+        return f"{filename[:-5]}.zip"
+    if lower_filename.endswith(".yml"):
+        return f"{filename[:-4]}.zip"
+    return f"{filename}.zip"

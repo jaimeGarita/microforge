@@ -1,4 +1,7 @@
 specVersion: 1
+project:
+  name: orders-service
+  packageName: orders_service
 target:
   language: python
   framework: fastapi

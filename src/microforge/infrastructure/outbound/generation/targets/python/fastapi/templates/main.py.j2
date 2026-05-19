@@ -1,0 +1,8 @@
+from fastapi import FastAPI
+
+app = FastAPI(title={{ app_title | tojson }})
+
+
+@app.get("{{ health_path }}")
+def health() -> dict[str, str]:
+    return {"status": "ok"}

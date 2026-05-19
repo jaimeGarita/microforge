@@ -14,6 +14,13 @@ from microforge.domain.spec.types import (
 )
 
 
+class ProjectConfig(BaseModel):
+    """Project-level configuration."""
+
+    name: str = "microforge"
+    package_name: str = Field(default="microforge", alias="packageName")
+
+
 class TargetConfig(BaseModel):
     """Code generation target metadata."""
 
@@ -84,6 +91,7 @@ class ModelSpec(BaseModel):
 class SpecV1(BaseModel):
     """Top-level specification (version 1 schema)."""
 
+    project_config: ProjectConfig = Field(default_factory=ProjectConfig, alias="project")
     spec_version: int = Field(default=1, alias="specVersion", frozen=True)
     target: TargetConfig = Field(default_factory=TargetConfig)
     service: ServiceConfig = Field(default_factory=ServiceConfig)

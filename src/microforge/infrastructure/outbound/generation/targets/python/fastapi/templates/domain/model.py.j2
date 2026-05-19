@@ -1,0 +1,14 @@
+from dataclasses import dataclass
+{% if imports %}
+
+{% for import_line in imports %}
+{{ import_line }}
+{% endfor %}
+{% endif %}
+
+
+@dataclass
+class {{ class_name }}:
+{% for field in fields %}
+    {{ field.name }}: {{ field.python_type }}
+{% endfor %}
