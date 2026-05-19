@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from microforge.application.generation.ports.outbound import ProjectGeneratorPort
@@ -10,6 +9,12 @@ from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import SpecV1
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.domain_models import (
     DomainModelsRenderer,
+)
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
+    package_name_for,
+)
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.orm_models import (
+    OrmModelsRenderer,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
 
@@ -22,6 +27,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
     def __init__(self, renderer: TemplateRenderer | None = None):
         self.renderer = renderer or TemplateRenderer(TEMPLATE_DIR)
         self.domain_models_renderer = DomainModelsRenderer(self.renderer)
+        self.orm_models_renderer = OrmModelsRenderer(self.renderer)
 
     def generate(self, spec: SpecV1) -> list[ProjectFile]:
         context = _build_context(spec)
@@ -40,18 +46,13 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
             ),
         ]
         files.extend(self.domain_models_renderer.render(spec))
+        files.extend(self.orm_models_renderer.render(spec))
         return files
-
-
-def _to_package_name(service_name: str) -> str:
-    normalized = re.sub(r"[^a-zA-Z0-9_]+", "_", service_name.strip().lower())
-    normalized = normalized.strip("_")
-    return normalized or "generated_service"
 
 
 def _build_context(spec: SpecV1) -> dict[str, str]:
     description = spec.service.description or "Generated FastAPI service"
-    package_name = _to_package_name(spec.project_config.package_name)
+    package_name = package_name_for(spec.project_config.package_name)
     return {
         "app_title": f"{spec.service.name} API",
         "description": description,

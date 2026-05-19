@@ -1,0 +1,14 @@
+{% for import_line in imports %}
+{{ import_line }}
+{% endfor %}
+from sqlalchemy.orm import Mapped, mapped_column
+
+from {{ package_name }}.infrastructure.persistence.base import Base
+
+
+class {{ class_name }}ORM(Base):
+    __tablename__ = "{{ table_name }}"
+
+{% for field in fields %}
+    {{ field.name }}: Mapped[{{ field.python_type }}] = mapped_column({{ field.column_args }})
+{% endfor %}

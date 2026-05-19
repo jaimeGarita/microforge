@@ -24,6 +24,9 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "pyproject.toml",
         "src/orders_service/domain/models/__init__.py",
         "src/orders_service/domain/models/order.py",
+        "src/orders_service/infrastructure/persistence/__init__.py",
+        "src/orders_service/infrastructure/persistence/base.py",
+        "src/orders_service/infrastructure/persistence/order.py",
         "src/orders_service/main.py",
     }
     assert "# orders" in by_path["README.md"]
@@ -33,3 +36,26 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "class Order:" in by_path["src/orders_service/domain/models/order.py"]
     assert "id: UUID" in by_path["src/orders_service/domain/models/order.py"]
     assert "status: str" in by_path["src/orders_service/domain/models/order.py"]
+    assert (
+        "class Base(DeclarativeBase):"
+        in by_path["src/orders_service/infrastructure/persistence/base.py"]
+    )
+    assert (
+        "class OrderORM(Base):" in by_path["src/orders_service/infrastructure/persistence/order.py"]
+    )
+    assert (
+        "from orders_service.infrastructure.persistence.base import Base"
+        in by_path["src/orders_service/infrastructure/persistence/order.py"]
+    )
+    assert (
+        '__tablename__ = "orders"'
+        in by_path["src/orders_service/infrastructure/persistence/order.py"]
+    )
+    assert (
+        "id: Mapped[UUID] = mapped_column(primary_key=True)"
+        in by_path["src/orders_service/infrastructure/persistence/order.py"]
+    )
+    assert (
+        "status: Mapped[str] = mapped_column()"
+        in by_path["src/orders_service/infrastructure/persistence/order.py"]
+    )
