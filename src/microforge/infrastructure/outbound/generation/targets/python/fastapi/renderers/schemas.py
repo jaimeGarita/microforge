@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
-from microforge.domain.spec.models import FieldSpec, ModelSpec, SpecV1
+from microforge.domain.spec.models import ApiEndpoint, FieldSpec, ModelSpec, SpecV1
+from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.python_types import (
-    imports_for_model,
+    imports_for_fields,
     python_type_for,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
@@ -26,7 +27,7 @@ class SchemaFieldContext:
 
 
 class SchemasRenderer:
-    """Render one Pydantic schema file per spec model."""
+    """Render Pydantic schema files required by API endpoints."""
 
     def __init__(self, renderer: TemplateRenderer):
         self.renderer = renderer
@@ -42,28 +43,111 @@ class SchemasRenderer:
             )
         ]
 
-        files.extend(
-            ProjectFile(
-                path=f"{base_path}/{to_snake_case(model.name)}.py",
-                content=_encode(self._render_model(model)),
-            )
-            for model in spec.models
-        )
+        for model in spec.models:
+            files.extend(self._render_model_files(model, spec.api.endpoints, base_path))
         return files
 
-    def _render_model(self, model: ModelSpec) -> str:
-        return self.renderer.render(
-            "infrastructure/inbound/api/schemas/model.py.j2",
-            {
-                "class_name": model.name,
-                "create_fields": [_field_context(field) for field in _create_fields(model)],
-                "imports": imports_for_model(model),
-                "read_fields": [_field_context(field) for field in model.fields],
-            },
+    def _render_model_files(
+        self,
+        model: ModelSpec,
+        endpoints: list[ApiEndpoint],
+        base_path: str,
+    ) -> list[ProjectFile]:
+        schema_plan = _schema_plan_for(model, endpoints)
+        model_path = f"{base_path}/{to_snake_case(model.name)}"
+        files = [
+            ProjectFile(
+                path=f"{model_path}/__init__.py",
+                content=_encode(""),
+            )
+        ]
+        if schema_plan.create_fields:
+            files.append(
+                self._schema_file(
+                    path=f"{model_path}/{to_snake_case(model.name)}_create.py",
+                    class_name=f"{model.name}Create",
+                    fields=schema_plan.create_fields,
+                )
+            )
+        if schema_plan.read_fields:
+            files.append(
+                self._schema_file(
+                    path=f"{model_path}/{to_snake_case(model.name)}_read.py",
+                    class_name=f"{model.name}Read",
+                    fields=schema_plan.read_fields,
+                )
+            )
+        if schema_plan.update_fields:
+            files.append(
+                self._schema_file(
+                    path=f"{model_path}/{to_snake_case(model.name)}_update.py",
+                    class_name=f"{model.name}Update",
+                    fields=schema_plan.update_fields,
+                )
+            )
+        return files
+
+    def _schema_file(
+        self,
+        path: str,
+        class_name: str,
+        fields: list[FieldSpec],
+    ) -> ProjectFile:
+        return ProjectFile(
+            path=path,
+            content=_encode(
+                self.renderer.render(
+                    "infrastructure/inbound/api/schemas/schema.py.j2",
+                    {
+                        "class_name": class_name,
+                        "fields": [_field_context(field) for field in fields],
+                        "imports": imports_for_fields(fields),
+                    },
+                )
+            ),
         )
 
 
-def _create_fields(model: ModelSpec) -> list[FieldSpec]:
+@dataclass(frozen=True)
+class SchemaPlan:
+    """Schema classes and fields required by API endpoints."""
+
+    create_fields: list[FieldSpec]
+    read_fields: list[FieldSpec]
+    update_fields: list[FieldSpec]
+
+def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPlan:
+    methods = {
+        endpoint.method for endpoint in endpoints if _endpoint_targets_model(endpoint, model)
+    }
+    writable_fields = _writable_fields(model)
+    return SchemaPlan(
+        create_fields=writable_fields if ApiHttpMethod.post in methods else [],
+        read_fields=model.fields if ApiHttpMethod.get in methods else [],
+        update_fields=writable_fields
+        if methods.intersection({ApiHttpMethod.put, ApiHttpMethod.patch})
+        else [],
+    )
+
+
+def _endpoint_targets_model(endpoint: ApiEndpoint, model: ModelSpec) -> bool:
+    model_name = to_snake_case(model.name)
+    model_plural = f"{model_name}s"
+    endpoint_name = to_snake_case(endpoint.name)
+    path_segments = {
+        segment.replace("-", "_")
+        for segment in endpoint.path.strip("/").split("/")
+        if segment and not segment.startswith("{")
+    }
+    return (
+        model_name in endpoint_name
+        or model_plural in endpoint_name
+        or model_name in path_segments
+        or model_plural in path_segments
+    )
+
+
+def _writable_fields(model: ModelSpec) -> list[FieldSpec]:
     return [field for field in model.fields if field.name != "id"]
 
 
