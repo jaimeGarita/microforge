@@ -1,0 +1,23 @@
+{% if imports %}
+{% for import_line in imports %}
+{{ import_line }}
+{% endfor %}
+
+{% endif %}
+from pydantic import BaseModel
+
+
+class {{ class_name }}Create(BaseModel):
+{% if create_fields %}
+{% for field in create_fields %}
+    {{ field.name }}: {{ field.python_type }}
+{% endfor %}
+{% else %}
+    pass
+{% endif %}
+
+
+class {{ class_name }}Read(BaseModel):
+{% for field in read_fields %}
+    {{ field.name }}: {{ field.python_type }}
+{% endfor %}

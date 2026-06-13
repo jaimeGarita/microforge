@@ -24,6 +24,8 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "pyproject.toml",
         "src/orders_service/domain/models/__init__.py",
         "src/orders_service/domain/models/order.py",
+        "src/orders_service/infrastructure/inbound/api/schemas/__init__.py",
+        "src/orders_service/infrastructure/inbound/api/schemas/order.py",
         "src/orders_service/infrastructure/persistence/__init__.py",
         "src/orders_service/infrastructure/persistence/base.py",
         "src/orders_service/infrastructure/persistence/order.py",
@@ -36,6 +38,14 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "class Order:" in by_path["src/orders_service/domain/models/order.py"]
     assert "id: UUID" in by_path["src/orders_service/domain/models/order.py"]
     assert "status: str" in by_path["src/orders_service/domain/models/order.py"]
+    assert "pydantic>=2.0" in by_path["pyproject.toml"]
+    order_schema = by_path["src/orders_service/infrastructure/inbound/api/schemas/order.py"]
+    order_create_schema = order_schema.split("class OrderRead(BaseModel):", maxsplit=1)[0]
+    assert "class OrderCreate(BaseModel):" in order_schema
+    assert "class OrderRead(BaseModel):" in order_schema
+    assert "    status: str" in order_schema
+    assert "    id: UUID" in order_schema
+    assert "    id: UUID" not in order_create_schema
     assert (
         "class Base(DeclarativeBase):"
         in by_path["src/orders_service/infrastructure/persistence/base.py"]
