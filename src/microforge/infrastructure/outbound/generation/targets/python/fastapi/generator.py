@@ -16,11 +16,17 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.orm_models import (
     OrmModelsRenderer,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repositories import (
+    RepositoriesRenderer,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repository_ports import (
     RepositoryPortsRenderer,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.schemas import (
     SchemasRenderer,
+)
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.use_cases import (
+    UseCasesRenderer,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
 
@@ -35,7 +41,9 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         self.domain_models_renderer = DomainModelsRenderer(self.renderer)
         self.orm_models_renderer = OrmModelsRenderer(self.renderer)
         self.repository_ports_renderer = RepositoryPortsRenderer(self.renderer)
+        self.repositories_renderer = RepositoriesRenderer(self.renderer)
         self.schemas_renderer = SchemasRenderer(self.renderer)
+        self.use_cases_renderer = UseCasesRenderer(self.renderer)
 
     def generate(self, spec: SpecV1) -> list[ProjectFile]:
         context = _build_context(spec)
@@ -55,7 +63,9 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         ]
         files.extend(self.domain_models_renderer.render(spec))
         files.extend(self.repository_ports_renderer.render(spec))
+        files.extend(self.use_cases_renderer.render(spec))
         files.extend(self.orm_models_renderer.render(spec))
+        files.extend(self.repositories_renderer.render(spec))
         files.extend(self.schemas_renderer.render(spec))
         return files
 

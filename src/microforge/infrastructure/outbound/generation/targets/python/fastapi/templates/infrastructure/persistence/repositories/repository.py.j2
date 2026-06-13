@@ -1,0 +1,76 @@
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+{% if imports %}
+
+{% for import_line in imports %}
+{{ import_line }}
+{% endfor %}
+{% endif %}
+
+from {{ package_name }}.application.ports.repositories.{{ port_module }} import {{ port_class_name }}
+from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
+from {{ package_name }}.infrastructure.persistence.{{ orm_module }} import {{ orm_class_name }}
+
+
+class {{ class_name }}({{ port_class_name }}):
+    def __init__(self, session: Session):
+        self.session = session
+{% for method in methods %}
+{% if method.name == "find_all" %}
+
+    def find_all(self) -> list[{{ domain_class_name }}]:
+        records = self.session.scalars(select({{ orm_class_name }})).all()
+        return [self._to_domain(record) for record in records]
+{% elif method.name == "find_by_id" %}
+
+    def find_by_id(self, id: UUID) -> {{ domain_class_name }} | None:
+        record = self.session.get({{ orm_class_name }}, id)
+        if record is None:
+            return None
+        return self._to_domain(record)
+{% elif method.name == "save" %}
+
+    def save(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ domain_class_name }}:
+        record = self._to_orm({{ domain_module }})
+        self.session.add(record)
+        self.session.flush()
+        return self._to_domain(record)
+{% elif method.name == "update" %}
+
+    def update(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ domain_class_name }}:
+        record = self.session.merge(self._to_orm({{ domain_module }}))
+        self.session.flush()
+        return self._to_domain(record)
+{% elif method.name == "delete_by_id" %}
+
+    def delete_by_id(self, id: UUID) -> None:
+        record = self.session.get({{ orm_class_name }}, id)
+        if record is not None:
+            self.session.delete(record)
+            self.session.flush()
+{% elif method.filters %}
+
+    def {{ method.name }}(self, {{ method.params }}) -> {{ method.return_type }}:
+        records = self.session.scalars(
+            select({{ orm_class_name }})
+{% for filter in method.filters %}
+            .where({{ filter.expression }})
+{% endfor %}
+        ).all()
+        return [self._to_domain(record) for record in records]
+{% endif %}
+{% endfor %}
+
+    def _to_domain(self, record: {{ orm_class_name }}) -> {{ domain_class_name }}:
+        return {{ domain_class_name }}(
+{% for field in field_mappings %}
+            {{ field.name }}=record.{{ field.name }},
+{% endfor %}
+        )
+
+    def _to_orm(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ orm_class_name }}:
+        return {{ orm_class_name }}(
+{% for field in field_mappings %}
+            {{ field.name }}={{ domain_module }}.{{ field.name }},
+{% endfor %}
+        )

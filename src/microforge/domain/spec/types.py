@@ -37,12 +37,18 @@ class QueryOp(str, Enum):
     """Operations allowed in query filters."""
 
     eq = "eq"
+    ne = "ne"
     lt = "lt"
     lte = "lte"
     gt = "gt"
     gte = "gte"
     like = "like"
+    not_like = "not_like"
     in_ = "in"
+    not_in = "not_in"
+    contains = "contains"
+    starts_with = "startswith"
+    ends_with = "endswith"
 
 
 class ApiHttpMethod(str, Enum):

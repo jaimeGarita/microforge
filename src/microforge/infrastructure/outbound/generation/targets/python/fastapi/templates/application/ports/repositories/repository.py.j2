@@ -13,4 +13,5 @@ class {{ class_name }}(Protocol):
 {% for method in methods %}
     def {{ method.name }}(self{% if method.params %}, {{ method.params }}{% endif %}) -> {{ method.return_type }}:
         ...
+
 {% endfor %}

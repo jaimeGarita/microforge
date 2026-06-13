@@ -1,0 +1,16 @@
+{% for import_line in imports -%}
+{{ import_line }}
+{% endfor -%}
+{% if imports %}
+
+{% endif -%}
+from {{ package_name }}.application.ports.repositories.{{ repository_module }} import {{ repository_class_name }}
+from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
+
+
+class {{ class_name }}:
+    def __init__(self, repository: {{ repository_class_name }}):
+        self.repository = repository
+
+    def execute(self{% if params %}, {{ params }}{% endif %}) -> {{ return_type }}:
+        return self.repository.{{ repository_method_name }}({{ repository_param_names }})
