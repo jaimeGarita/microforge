@@ -1,0 +1,45 @@
+{% if imports_uuid -%}
+from uuid import UUID
+
+{% endif -%}
+from fastapi import APIRouter, Depends{% if imports_uuid %}, HTTPException{% endif %}
+
+{% for route in routes -%}
+from {{ package_name }}.application.use_cases.{{ model_module }}.{{ route.use_case.filename }} import (
+    {{ route.use_case.class_name }},
+)
+{% endfor -%}
+from {{ package_name }}.infrastructure.inbound.api.providers import (
+{% for route in routes %}
+    {{ route.provider_name }},
+{% endfor %}
+)
+from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_read import {{ read_schema_class }}
+
+router = APIRouter(prefix="{{ router_prefix }}", tags=["{{ router_tag }}"])
+{% for route in routes %}
+
+
+@router.get("{{ route.path }}", response_model={{ route.response_model }})
+def {{ route.function_name }}(
+{% if route.has_id_param %}
+    id: UUID,
+{% endif %}
+    use_case: {{ route.use_case.class_name }} = Depends({{ route.provider_name }}),
+) -> {{ route.response_model }}:
+{% if route.has_id_param %}
+    record = use_case.execute(id)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "{{ read_schema_class.removesuffix('Read') }}"
+                " not found"
+            ),
+        )
+    {{ route.return_statement }}
+{% else %}
+    records = use_case.execute()
+    {{ route.return_statement }}
+{% endif %}
+{% endfor %}

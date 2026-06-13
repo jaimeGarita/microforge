@@ -46,6 +46,18 @@ class OrmModelsRenderer:
                 path=f"{base_path}/base.py",
                 content=_encode(self.renderer.render("infrastructure/persistence/base.py.j2", {})),
             ),
+            ProjectFile(
+                path=f"{base_path}/session.py",
+                content=_encode(
+                    self.renderer.render(
+                        "infrastructure/persistence/session.py.j2",
+                        {
+                            "orm_modules": [to_snake_case(model.name) for model in spec.models],
+                            "package_name": package_name,
+                        },
+                    )
+                ),
+            ),
         ]
 
         files.extend(

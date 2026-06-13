@@ -1,0 +1,126 @@
+specVersion: 1
+project:
+  name: commerce-service
+  packageName: commerce_service
+target:
+  language: python
+  framework: fastapi
+  pythonVersion: "3.12"
+  packaging: poetry
+service:
+  name: commerce
+  description: Larger spec to exercise model, schema, repository, and use case generation
+api:
+  basePath: /api/v1
+  endpoints:
+    - name: listCustomers
+      path: /customers
+      method: GET
+    - name: getCustomerById
+      path: /customers/{id}
+      method: GET
+    - name: createCustomer
+      path: /customers
+      method: POST
+    - name: updateCustomer
+      path: /customers/{id}
+      method: PATCH
+    - name: deleteCustomer
+      path: /customers/{id}
+      method: DELETE
+    - name: listProducts
+      path: /products
+      method: GET
+    - name: createProduct
+      path: /products
+      method: POST
+    - name: listOrders
+      path: /orders
+      method: GET
+    - name: getOrderById
+      path: /orders/{id}
+      method: GET
+models:
+  - name: Customer
+    fields:
+      - name: id
+        type: uuid
+      - name: email
+        type: string
+      - name: name
+        type: string
+      - name: active
+        type: boolean
+      - name: created_at
+        type: instant
+    queries:
+      - name: by_email
+        params:
+          - field: email
+            op: eq
+      - name: by_name_like
+        params:
+          - field: name
+            op: like
+      - name: by_created_at_gte
+        params:
+          - field: created_at
+            op: gte
+    features:
+      repository: true
+  - name: Product
+    fields:
+      - name: id
+        type: uuid
+      - name: sku
+        type: string
+      - name: name
+        type: string
+      - name: price
+        type: decimal
+      - name: stock
+        type: int
+      - name: active
+        type: boolean
+    queries:
+      - name: by_sku
+        params:
+          - field: sku
+            op: eq
+      - name: by_price_lte
+        params:
+          - field: price
+            op: lte
+      - name: by_stock_gt
+        params:
+          - field: stock
+            op: gt
+    features:
+      repository: true
+  - name: Order
+    fields:
+      - name: id
+        type: uuid
+      - name: customer_id
+        type: uuid
+      - name: status
+        type: string
+      - name: total_amount
+        type: decimal
+      - name: placed_at
+        type: instant
+    queries:
+      - name: by_customer_id
+        params:
+          - field: customer_id
+            op: eq
+      - name: by_status
+        params:
+          - field: status
+            op: in
+      - name: by_total_amount_gte
+        params:
+          - field: total_amount
+            op: gte
+    features:
+      repository: true

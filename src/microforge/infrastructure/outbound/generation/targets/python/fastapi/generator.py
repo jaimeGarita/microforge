@@ -7,6 +7,10 @@ from pathlib import Path
 from microforge.application.generation.ports.outbound import ProjectGeneratorPort
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import SpecV1
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_routes import (
+    ApiRoutesRenderer,
+    router_modules_for_spec,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.domain_models import (
     DomainModelsRenderer,
 )
@@ -15,6 +19,9 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.orm_models import (
     OrmModelsRenderer,
+)
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.providers import (
+    ProvidersRenderer,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repositories import (
     RepositoriesRenderer,
@@ -38,8 +45,10 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
 
     def __init__(self, renderer: TemplateRenderer | None = None):
         self.renderer = renderer or TemplateRenderer(TEMPLATE_DIR)
+        self.api_routes_renderer = ApiRoutesRenderer(self.renderer)
         self.domain_models_renderer = DomainModelsRenderer(self.renderer)
         self.orm_models_renderer = OrmModelsRenderer(self.renderer)
+        self.providers_renderer = ProvidersRenderer(self.renderer)
         self.repository_ports_renderer = RepositoryPortsRenderer(self.renderer)
         self.repositories_renderer = RepositoriesRenderer(self.renderer)
         self.schemas_renderer = SchemasRenderer(self.renderer)
@@ -67,6 +76,8 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         files.extend(self.orm_models_renderer.render(spec))
         files.extend(self.repositories_renderer.render(spec))
         files.extend(self.schemas_renderer.render(spec))
+        files.extend(self.providers_renderer.render(spec))
+        files.extend(self.api_routes_renderer.render(spec))
         return files
 
 
@@ -75,10 +86,12 @@ def _build_context(spec: SpecV1) -> dict[str, str]:
     package_name = package_name_for(spec.project_config.package_name)
     return {
         "app_title": f"{spec.service.name} API",
+        "api_base_path": spec.api.base_path,
         "description": description,
         "health_path": f"{spec.api.base_path}/health",
         "package_name": package_name,
         "requires_python": f">={spec.target.python_version}",
+        "routers": router_modules_for_spec(spec),
         "service_name": spec.service.name,
     }
 

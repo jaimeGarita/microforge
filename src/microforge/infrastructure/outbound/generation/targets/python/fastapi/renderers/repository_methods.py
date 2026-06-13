@@ -44,7 +44,7 @@ def repository_methods_for(
     for endpoint in endpoints:
         if not endpoint_targets_model(endpoint, model):
             continue
-        method = _method_for_endpoint(model, endpoint)
+        method = repository_method_for_endpoint(model, endpoint)
         if method is None or method.name in seen:
             continue
         seen.add(method.name)
@@ -64,10 +64,12 @@ def imports_for_repository_methods(methods: list[RepositoryMethodContext]) -> li
     return sorted(imports)
 
 
-def _method_for_endpoint(
+def repository_method_for_endpoint(
     model: ModelSpec,
     endpoint: ApiEndpoint,
 ) -> RepositoryMethodContext | None:
+    """Return the repository method required by an API endpoint."""
+
     has_path_param = endpoint_has_path_param(endpoint)
     if endpoint.method == ApiHttpMethod.get and has_path_param:
         return RepositoryMethodContext(

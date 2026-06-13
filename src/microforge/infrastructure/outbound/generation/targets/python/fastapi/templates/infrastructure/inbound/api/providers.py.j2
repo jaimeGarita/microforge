@@ -1,0 +1,23 @@
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+{% for provider in providers -%}
+from {{ package_name }}.{{ provider.import_module }} import (
+    {{ provider.import_class_name }},
+)
+from {{ package_name }}.{{ provider.repository_module }} import (
+    {{ provider.repository_class_name }},
+)
+{% endfor %}
+from {{ package_name }}.infrastructure.persistence.session import get_session
+
+
+{% for provider in providers %}
+def {{ provider.function_name }}(
+    session: Session = Depends(get_session),
+) -> {{ provider.import_class_name }}:
+    repository = {{ provider.repository_class_name }}(session)
+    return {{ provider.import_class_name }}(repository)
+
+
+{% endfor %}

@@ -1,6 +1,17 @@
 from fastapi import FastAPI
+{% for router in routers %}
+from {{ package_name }}.infrastructure.inbound.api.routes.{{ router.module_name }} import (
+    router as {{ router.router_variable }},
+)
+{% endfor %}
+from {{ package_name }}.infrastructure.persistence.session import init_db
+
+init_db()
 
 app = FastAPI(title={{ app_title | tojson }})
+{% for router in routers %}
+app.include_router({{ router.router_variable }}, prefix={{ api_base_path | tojson }})
+{% endfor %}
 
 
 @app.get("{{ health_path }}")

@@ -59,7 +59,7 @@ class UseCasesRenderer:
                     path=f"{model_path}/{use_case.filename}.py",
                     content=_encode(self._render_use_case(model, package_name, use_case, methods)),
                 )
-                for use_case in [_use_case_for_method(model, method) for method in methods]
+                for use_case in [use_case_for_method(model, method) for method in methods]
             )
         return files
 
@@ -88,7 +88,9 @@ class UseCasesRenderer:
         )
 
 
-def _use_case_for_method(model: ModelSpec, method: RepositoryMethodContext) -> UseCaseContext:
+def use_case_for_method(model: ModelSpec, method: RepositoryMethodContext) -> UseCaseContext:
+    """Return the use case generated for a repository method."""
+
     return UseCaseContext(
         class_name=_use_case_class_name(model, method),
         filename=_use_case_filename(model, method),
