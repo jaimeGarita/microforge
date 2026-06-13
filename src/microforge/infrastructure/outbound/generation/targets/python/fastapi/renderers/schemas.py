@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import ApiEndpoint, FieldSpec, ModelSpec, SpecV1
 from microforge.domain.spec.types import ApiHttpMethod
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_endpoints import (
+    endpoint_targets_model,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
@@ -116,34 +119,18 @@ class SchemaPlan:
     read_fields: list[FieldSpec]
     update_fields: list[FieldSpec]
 
+
 def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPlan:
-    methods = {
-        endpoint.method for endpoint in endpoints if _endpoint_targets_model(endpoint, model)
-    }
+    methods = {endpoint.method for endpoint in endpoints if endpoint_targets_model(endpoint, model)}
     writable_fields = _writable_fields(model)
     return SchemaPlan(
         create_fields=writable_fields if ApiHttpMethod.post in methods else [],
         read_fields=model.fields if ApiHttpMethod.get in methods else [],
-        update_fields=writable_fields
-        if methods.intersection({ApiHttpMethod.put, ApiHttpMethod.patch})
-        else [],
-    )
-
-
-def _endpoint_targets_model(endpoint: ApiEndpoint, model: ModelSpec) -> bool:
-    model_name = to_snake_case(model.name)
-    model_plural = f"{model_name}s"
-    endpoint_name = to_snake_case(endpoint.name)
-    path_segments = {
-        segment.replace("-", "_")
-        for segment in endpoint.path.strip("/").split("/")
-        if segment and not segment.startswith("{")
-    }
-    return (
-        model_name in endpoint_name
-        or model_plural in endpoint_name
-        or model_name in path_segments
-        or model_plural in path_segments
+        update_fields=(
+            writable_fields
+            if methods.intersection({ApiHttpMethod.put, ApiHttpMethod.patch})
+            else []
+        ),
     )
 
 

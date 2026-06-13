@@ -22,6 +22,8 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert set(by_path) == {
         "README.md",
         "pyproject.toml",
+        "src/orders_service/application/ports/repositories/__init__.py",
+        "src/orders_service/application/ports/repositories/order_repository.py",
         "src/orders_service/domain/models/__init__.py",
         "src/orders_service/domain/models/order.py",
         "src/orders_service/infrastructure/inbound/api/schemas/__init__.py",
@@ -36,6 +38,13 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert 'name = "orders_service"' in by_path["pyproject.toml"]
     assert 'app = FastAPI(title="orders API")' in by_path["src/orders_service/main.py"]
     assert '@app.get("/api/v1/health")' in by_path["src/orders_service/main.py"]
+    repository_port = by_path[
+        "src/orders_service/application/ports/repositories/order_repository.py"
+    ]
+    assert "class OrderRepositoryPort(Protocol):" in repository_port
+    assert "def find_all(self) -> list[Order]:" in repository_port
+    assert "def find_by_id" not in repository_port
+    assert "def save" not in repository_port
     assert "class Order:" in by_path["src/orders_service/domain/models/order.py"]
     assert "id: UUID" in by_path["src/orders_service/domain/models/order.py"]
     assert "status: str" in by_path["src/orders_service/domain/models/order.py"]

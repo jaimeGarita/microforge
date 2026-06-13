@@ -1,0 +1,16 @@
+from typing import Protocol
+{% if imports %}
+
+{% for import_line in imports %}
+{{ import_line }}
+{% endfor %}
+{% endif %}
+
+from {{ package_name }}.domain.models.{{ model_module }} import {{ model_class_name }}
+
+
+class {{ class_name }}(Protocol):
+{% for method in methods %}
+    def {{ method.name }}(self{% if method.params %}, {{ method.params }}{% endif %}) -> {{ method.return_type }}:
+        ...
+{% endfor %}

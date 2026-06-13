@@ -16,6 +16,9 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.orm_models import (
     OrmModelsRenderer,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repository_ports import (
+    RepositoryPortsRenderer,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.schemas import (
     SchemasRenderer,
 )
@@ -31,6 +34,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         self.renderer = renderer or TemplateRenderer(TEMPLATE_DIR)
         self.domain_models_renderer = DomainModelsRenderer(self.renderer)
         self.orm_models_renderer = OrmModelsRenderer(self.renderer)
+        self.repository_ports_renderer = RepositoryPortsRenderer(self.renderer)
         self.schemas_renderer = SchemasRenderer(self.renderer)
 
     def generate(self, spec: SpecV1) -> list[ProjectFile]:
@@ -50,6 +54,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
             ),
         ]
         files.extend(self.domain_models_renderer.render(spec))
+        files.extend(self.repository_ports_renderer.render(spec))
         files.extend(self.orm_models_renderer.render(spec))
         files.extend(self.schemas_renderer.render(spec))
         return files
