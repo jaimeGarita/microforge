@@ -6,9 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from {{ package_name }}.infrastructure.persistence.base import Base
 {% for orm_module in orm_modules %}
-from {{ package_name }}.infrastructure.persistence import (
-    {{ orm_module }} as _{{ orm_module }}_model,
-)
+from {{ package_name }}.infrastructure.persistence import {{ orm_module }} as _{{ orm_module }}_model
 {% endfor %}
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
