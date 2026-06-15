@@ -139,6 +139,8 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         in session
     )
     assert "def get_session() -> Generator[Session, None, None]:" in session
+    assert "session.commit()" in session
+    assert "session.rollback()" in session
     assert "def init_db() -> None:" in session
     assert "Base.metadata.create_all(bind=engine)" in session
     assert (

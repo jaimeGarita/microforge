@@ -1,9 +1,11 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-{% for provider in providers -%}
-from {{ package_name }}.{{ provider.import_module }} import {{ provider.import_class_name }}
-from {{ package_name }}.{{ provider.repository_module }} import {{ provider.repository_class_name }}
+{% for import in use_case_imports -%}
+from {{ package_name }}.{{ import.module }} import {{ import.class_name }}
+{% endfor -%}
+{% for import in repository_imports -%}
+from {{ package_name }}.{{ import.module }} import {{ import.class_name }}
 {% endfor %}
 from {{ package_name }}.infrastructure.persistence.session import get_session
 

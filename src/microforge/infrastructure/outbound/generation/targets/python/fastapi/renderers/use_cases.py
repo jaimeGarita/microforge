@@ -12,7 +12,6 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repository_methods import (
     RepositoryMethodContext,
-    imports_for_repository_methods,
     repository_methods_for,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
@@ -28,6 +27,7 @@ class UseCaseContext:
     repository_method_name: str
     repository_param_names: str
     return_type: str
+    imports: list[str]
 
 
 class UseCasesRenderer:
@@ -57,7 +57,7 @@ class UseCasesRenderer:
             files.extend(
                 ProjectFile(
                     path=f"{model_path}/{use_case.filename}.py",
-                    content=_encode(self._render_use_case(model, package_name, use_case, methods)),
+                    content=_encode(self._render_use_case(model, package_name, use_case)),
                 )
                 for use_case in [use_case_for_method(model, method) for method in methods]
             )
@@ -68,7 +68,6 @@ class UseCasesRenderer:
         model: ModelSpec,
         package_name: str,
         use_case: UseCaseContext,
-        methods: list[RepositoryMethodContext],
     ) -> str:
         return self.renderer.render(
             "application/use_cases/use_case.py.j2",
@@ -76,7 +75,7 @@ class UseCasesRenderer:
                 "class_name": use_case.class_name,
                 "domain_class_name": model.name,
                 "domain_module": to_snake_case(model.name),
-                "imports": imports_for_repository_methods(methods),
+                "imports": use_case.imports,
                 "package_name": package_name,
                 "params": use_case.params,
                 "repository_class_name": f"{model.name}RepositoryPort",
@@ -98,6 +97,7 @@ def use_case_for_method(model: ModelSpec, method: RepositoryMethodContext) -> Us
         repository_method_name=method.name,
         repository_param_names=_param_names(method.params),
         return_type=method.return_type,
+        imports=method.imports,
     )
 
 
