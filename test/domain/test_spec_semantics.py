@@ -33,3 +33,43 @@ def test_validate_semantics_returns_all_semantic_errors() -> None:
     messages = [err.raw_message for err in errors]
     assert any("references missing fields" in message for message in messages)
     assert any("features.repository is false" in message for message in messages)
+
+
+def test_validate_semantics_flattens_generated_field_errors() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {"basePath": "/api/v1", "endpoints": []},
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "autoIncrement": True,
+                            "primaryKey": False,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    errors = exc_info.value.errors
+    assert len(errors) == 1
+    assert errors[0].to_dict() == {
+        "message": "Field 'id' is auto_increment but not primary_key.",
+        "model": "Order",
+    }

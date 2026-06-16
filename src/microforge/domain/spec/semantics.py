@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from microforge.domain.spec.errors import SpecSemanticError, SpecValidationErrors
-from microforge.domain.spec.models import SpecV1
+from microforge.domain.spec.models import ModelSpec, SpecV1
 from microforge.domain.spec.types import TargetFramework, TargetLanguage
 
 
@@ -19,7 +19,10 @@ def validate_semantics(spec: SpecV1) -> None:
 def _validate_target_v1(spec: SpecV1) -> list[SpecSemanticError]:
     """v1 only supports Python + FastAPI targets."""
     errors: list[SpecSemanticError] = []
-    if spec.target.language != TargetLanguage.python or spec.target.framework != TargetFramework.fastapi:
+    if (
+        spec.target.language != TargetLanguage.python
+        or spec.target.framework != TargetFramework.fastapi
+    ):
         errors.append(SpecSemanticError("v1 only supports target: python + fastapi."))
     return errors
 
@@ -30,6 +33,8 @@ def _validate_model_rules(spec: SpecV1) -> list[SpecSemanticError]:
     model_fields = _index_model_fields(spec)
     errors.extend(_validate_queries_refer_existing_fields(spec, model_fields))
     errors.extend(_validate_feature_coherence(spec))
+    for model in spec.models:
+        errors.extend(_validate_generated_fields(model))
     return errors
 
 
@@ -68,6 +73,20 @@ def _validate_feature_coherence(spec: SpecV1) -> list[SpecSemanticError]:
                 SpecSemanticError(
                     "Queries are defined but features.repository is false.",
                     model=m.name,
+                )
+            )
+    return errors
+
+
+def _validate_generated_fields(model: ModelSpec) -> list[SpecSemanticError]:
+    """Check that generated fields are properly configured."""
+    errors: list[SpecSemanticError] = []
+    for f in model.fields:
+        if f.auto_increment and not f.primary_key:
+            errors.append(
+                SpecSemanticError(
+                    f"Field '{f.name}' is auto_increment but not primary_key.",
+                    model=model.name,
                 )
             )
     return errors

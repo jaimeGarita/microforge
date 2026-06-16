@@ -63,6 +63,8 @@ class FieldSpec(BaseModel):
 
     name: str
     type: FieldType
+    auto_increment: bool = Field(default=False, alias="autoIncrement")
+    primary_key: bool = Field(default=False, alias="primaryKey")
 
 
 class QueryParam(BaseModel):
