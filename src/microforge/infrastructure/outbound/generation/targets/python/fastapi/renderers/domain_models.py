@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import FieldSpec, ModelSpec, SpecV1
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
+    field_is_database_generated,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
@@ -60,9 +63,12 @@ class DomainModelsRenderer:
 
 
 def _field_context(field: FieldSpec) -> PythonFieldContext:
+    python_type = python_type_for(field)
+    if field_is_database_generated(field):
+        python_type = f"{python_type} | None"
     return PythonFieldContext(
         name=field.name,
-        python_type=python_type_for(field),
+        python_type=python_type,
     )
 
 

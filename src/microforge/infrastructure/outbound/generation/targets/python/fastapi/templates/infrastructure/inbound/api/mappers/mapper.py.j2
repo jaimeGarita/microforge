@@ -28,6 +28,8 @@ class {{ class_name }}:
     def create_to_domain(payload: {{ create_schema_class }}) -> {{ domain_class_name }}:
 {% if id_is_uuid %}
         return {{ domain_class_name }}(id=uuid4(), **payload.model_dump())
+{% elif id_is_database_generated %}
+        return {{ domain_class_name }}(id=None, **payload.model_dump())
 {% else %}
         return {{ domain_class_name }}(**payload.model_dump())
 {% endif %}

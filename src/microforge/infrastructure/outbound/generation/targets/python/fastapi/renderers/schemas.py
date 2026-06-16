@@ -11,7 +11,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
     endpoint_targets_model,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
-    id_is_uuid,
+    field_is_generated_on_create,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
@@ -138,9 +138,7 @@ def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPl
 
 
 def _writable_fields(model: ModelSpec) -> list[FieldSpec]:
-    if id_is_uuid(model):
-        return [field for field in model.fields if field.name != "id"]
-    return model.fields
+    return [field for field in model.fields if not field_is_generated_on_create(field)]
 
 
 def _field_context(field: FieldSpec) -> SchemaFieldContext:

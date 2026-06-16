@@ -12,6 +12,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
     id_field_for,
+    id_is_database_generated,
     id_is_uuid,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
@@ -82,6 +83,7 @@ class ApiMappersRenderer:
                 "has_read": plan.has_read,
                 "has_update": plan.has_update,
                 "id_imports": imports_for_fields([id_field]) if id_field is not None else [],
+                "id_is_database_generated": id_is_database_generated(model),
                 "id_is_uuid": id_is_uuid(model),
                 "id_type": id_type,
                 "model_module": model_module,

@@ -53,6 +53,47 @@ def _integer_id_spec() -> SpecV1:
     )
 
 
+def _auto_increment_id_spec() -> SpecV1:
+    return SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {
+                "name": "inventory-service",
+                "packageName": "inventory_service",
+            },
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "inventory"},
+            "api": {
+                "basePath": "/api/v1",
+                "endpoints": [
+                    {"name": "createItem", "path": "/items", "method": "POST"},
+                ],
+            },
+            "models": [
+                {
+                    "name": "Item",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "primaryKey": True,
+                            "autoIncrement": True,
+                        },
+                        {"name": "name", "type": "string"},
+                    ],
+                    "queries": [],
+                    "features": {"repository": True},
+                }
+            ],
+        }
+    )
+
+
 def test_generator_creates_non_get_routes() -> None:
     spec = _load_spec("examples/spec_large.yaml")
     files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
@@ -88,14 +129,14 @@ def test_generator_creates_non_get_routes() -> None:
     create_schema = by_path[
         "src/commerce_service/infrastructure/inbound/api/schemas/customer/customer_create.py"
     ]
-    assert "id: int" in create_schema
+    assert "id: int" not in create_schema
     assert "email: str" in create_schema
 
     api_mapper = by_path[
         "src/commerce_service/infrastructure/inbound/api/mappers/customer_mapper.py"
     ]
     assert "def create_to_domain(payload: CustomerCreate) -> Customer:" in api_mapper
-    assert "return Customer(**payload.model_dump())" in api_mapper
+    assert "return Customer(id=None, **payload.model_dump())" in api_mapper
     assert "def update_to_domain(id: int, payload: CustomerUpdate) -> Customer:" in api_mapper
     assert "return Customer(id=id, **payload.model_dump())" in api_mapper
     assert "def to_read(customer: Customer) -> CustomerRead:" in api_mapper
@@ -136,6 +177,9 @@ def test_generator_creates_non_get_routes() -> None:
     assert "id: Mapped[int] = mapped_column(" in customer_orm
     assert "primary_key=True, autoincrement=True" in customer_orm
 
+    customer_domain = by_path["src/commerce_service/domain/models/customer.py"]
+    assert "id: int | None" in customer_domain
+
 
 def test_generator_uses_declared_id_type() -> None:
     files = fastapi_generator.PythonFastApiProjectGenerator().generate(_integer_id_spec())
@@ -167,3 +211,26 @@ def test_generator_uses_declared_id_type() -> None:
     ]
     assert "def find_by_id(self, id: int) -> Item | None:" in repository
     assert "def delete_by_id(self, id: int) -> None:" in repository
+
+
+def test_generator_omits_auto_increment_id_from_create_payload() -> None:
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(
+        _auto_increment_id_spec()
+    )
+
+    by_path = {f.path: f.content.decode("utf-8") for f in files}
+
+    domain = by_path["src/inventory_service/domain/models/item.py"]
+    assert "id: int | None" in domain
+
+    create_schema = by_path[
+        "src/inventory_service/infrastructure/inbound/api/schemas/item/item_create.py"
+    ]
+    assert "id: int" not in create_schema
+    assert "name: str" in create_schema
+
+    api_mapper = by_path["src/inventory_service/infrastructure/inbound/api/mappers/item_mapper.py"]
+    assert "return Item(id=None, **payload.model_dump())" in api_mapper
+
+    orm = by_path["src/inventory_service/infrastructure/persistence/item.py"]
+    assert "primary_key=True, autoincrement=True" in orm
