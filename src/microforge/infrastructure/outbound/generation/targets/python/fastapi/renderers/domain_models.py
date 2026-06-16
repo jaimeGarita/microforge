@@ -15,7 +15,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.python_types import (
     imports_for_model,
-    python_type_for,
+    nullable_python_type_for,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
 
@@ -63,9 +63,9 @@ class DomainModelsRenderer:
 
 
 def _field_context(field: FieldSpec) -> PythonFieldContext:
-    python_type = python_type_for(field)
+    python_type = nullable_python_type_for(field)
     if field_is_database_generated(field):
-        python_type = f"{python_type} | None"
+        python_type = python_type if python_type.endswith(" | None") else f"{python_type} | None"
     return PythonFieldContext(
         name=field.name,
         python_type=python_type,

@@ -78,6 +78,9 @@ class Order:
     status: str
 ```
 
+For the full YAML field metadata reference, see
+[doc/spec-format.md](doc/spec-format.md).
+
 ## API
 
 ### Health

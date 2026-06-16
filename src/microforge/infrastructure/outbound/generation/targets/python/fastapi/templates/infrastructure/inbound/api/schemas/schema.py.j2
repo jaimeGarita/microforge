@@ -4,10 +4,10 @@
 {% if imports %}
 
 {% endif -%}
-from pydantic import BaseModel
+from pydantic import BaseModel{% if imports_field %}, Field{% endif %}
 
 
 class {{ class_name }}(BaseModel):
 {% for field in fields %}
-    {{ field.name }}: {{ field.python_type }}
+    {{ field.name }}: {{ field.python_type }}{{ field.assignment }}
 {% endfor %}

@@ -6,6 +6,10 @@ from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import FieldSpec, ModelSpec, SpecV1
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.field_metadata import (
+    field_has_default,
+    sqlalchemy_default_expression_for,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     table_name_for,
@@ -25,8 +29,6 @@ class OrmFieldContext:
     name: str
     python_type: str
     column_args: str
-    auto_increment: bool
-    primary_key: bool
 
 
 class OrmModelsRenderer:
@@ -86,11 +88,9 @@ class OrmModelsRenderer:
 
 def _field_context(field: FieldSpec) -> OrmFieldContext:
     return OrmFieldContext(
-        auto_increment=field.auto_increment,
         name=field.name,
-        python_type=python_type_for(field),
+        python_type=_orm_python_type_for(field),
         column_args=_column_args_for(field),
-        primary_key=field.primary_key,
     )
 
 
@@ -100,7 +100,22 @@ def _column_args_for(field: FieldSpec) -> str:
         args.append("primary_key=True")
     if field.auto_increment:
         args.append("autoincrement=True")
+    if field.nullable:
+        args.append("nullable=True")
+    if field.unique:
+        args.append("unique=True")
+    if field.index:
+        args.append("index=True")
+    if field_has_default(field):
+        args.append(f"default={sqlalchemy_default_expression_for(field)}")
     return ", ".join(args)
+
+
+def _orm_python_type_for(field: FieldSpec) -> str:
+    python_type = python_type_for(field)
+    if field.nullable:
+        return f"{python_type} | None"
+    return python_type
 
 
 def _encode(content: str) -> bytes:

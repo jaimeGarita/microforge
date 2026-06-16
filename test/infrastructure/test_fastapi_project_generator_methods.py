@@ -94,6 +94,104 @@ def _auto_increment_id_spec() -> SpecV1:
     )
 
 
+def _nullable_field_spec() -> SpecV1:
+    return SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {
+                "name": "inventory-service",
+                "packageName": "inventory_service",
+            },
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "inventory"},
+            "api": {
+                "basePath": "/api/v1",
+                "endpoints": [
+                    {"name": "createItem", "path": "/items", "method": "POST"},
+                    {"name": "listItems", "path": "/items", "method": "GET"},
+                ],
+            },
+            "models": [
+                {
+                    "name": "Item",
+                    "fields": [
+                        {"name": "id", "type": "int", "primaryKey": True},
+                        {"name": "description", "type": "string", "nullable": True},
+                    ],
+                    "queries": [],
+                    "features": {"repository": True},
+                }
+            ],
+        }
+    )
+
+
+def _field_metadata_spec() -> SpecV1:
+    return SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {
+                "name": "catalog-service",
+                "packageName": "catalog_service",
+            },
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "catalog"},
+            "api": {
+                "basePath": "/api/v1",
+                "endpoints": [
+                    {"name": "createProduct", "path": "/products", "method": "POST"},
+                    {"name": "listProducts", "path": "/products", "method": "GET"},
+                ],
+            },
+            "models": [
+                {
+                    "name": "Product",
+                    "fields": [
+                        {"name": "id", "type": "int", "primaryKey": True},
+                        {
+                            "name": "sku",
+                            "type": "string",
+                            "unique": True,
+                            "index": True,
+                            "minLength": 3,
+                            "maxLength": 30,
+                        },
+                        {
+                            "name": "status",
+                            "type": "string",
+                            "enum": ["draft", "active"],
+                            "default": "draft",
+                        },
+                        {
+                            "name": "price",
+                            "type": "decimal",
+                            "minimum": 0,
+                            "default": "0.0",
+                        },
+                        {
+                            "name": "active",
+                            "type": "boolean",
+                            "default": True,
+                        },
+                    ],
+                    "queries": [],
+                    "features": {"repository": True},
+                }
+            ],
+        }
+    )
+
+
 def test_generator_creates_non_get_routes() -> None:
     spec = _load_spec("examples/spec_large.yaml")
     files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
@@ -174,8 +272,7 @@ def test_generator_creates_non_get_routes() -> None:
     assert ".where(OrderORM.status.in_(status_in))" in order_repository
 
     customer_orm = by_path["src/commerce_service/infrastructure/persistence/customer.py"]
-    assert "id: Mapped[int] = mapped_column(" in customer_orm
-    assert "primary_key=True, autoincrement=True" in customer_orm
+    assert "id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)" in customer_orm
 
     customer_domain = by_path["src/commerce_service/domain/models/customer.py"]
     assert "id: int | None" in customer_domain
@@ -214,9 +311,7 @@ def test_generator_uses_declared_id_type() -> None:
 
 
 def test_generator_omits_auto_increment_id_from_create_payload() -> None:
-    files = fastapi_generator.PythonFastApiProjectGenerator().generate(
-        _auto_increment_id_spec()
-    )
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(_auto_increment_id_spec())
 
     by_path = {f.path: f.content.decode("utf-8") for f in files}
 
@@ -234,3 +329,54 @@ def test_generator_omits_auto_increment_id_from_create_payload() -> None:
 
     orm = by_path["src/inventory_service/infrastructure/persistence/item.py"]
     assert "primary_key=True, autoincrement=True" in orm
+
+
+def test_generator_renders_nullable_fields() -> None:
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(_nullable_field_spec())
+
+    by_path = {f.path: f.content.decode("utf-8") for f in files}
+
+    domain = by_path["src/inventory_service/domain/models/item.py"]
+    assert "description: str | None" in domain
+
+    create_schema = by_path[
+        "src/inventory_service/infrastructure/inbound/api/schemas/item/item_create.py"
+    ]
+    assert "description: str | None" in create_schema
+
+    read_schema = by_path[
+        "src/inventory_service/infrastructure/inbound/api/schemas/item/item_read.py"
+    ]
+    assert "description: str | None" in read_schema
+
+    orm = by_path["src/inventory_service/infrastructure/persistence/item.py"]
+    assert "id: Mapped[int] = mapped_column(primary_key=True)" in orm
+    assert "description: Mapped[str | None] = mapped_column(nullable=True)" in orm
+
+
+def test_generator_renders_field_metadata() -> None:
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(_field_metadata_spec())
+
+    by_path = {f.path: f.content.decode("utf-8") for f in files}
+
+    domain = by_path["src/catalog_service/domain/models/product.py"]
+    assert "from typing import Literal" in domain
+    assert "status: Literal['draft', 'active']" in domain
+
+    schema = by_path[
+        "src/catalog_service/infrastructure/inbound/api/schemas/product/product_create.py"
+    ]
+    assert "from decimal import Decimal" in schema
+    assert "from typing import Literal" in schema
+    assert "from pydantic import BaseModel, Field" in schema
+    assert "sku: str = Field(min_length=3, max_length=30)" in schema
+    assert "status: Literal['draft', 'active'] = Field(default='draft')" in schema
+    assert "price: Decimal = Field(default=Decimal('0.0'), ge=0)" in schema
+    assert "active: bool = Field(default=True)" in schema
+
+    orm = by_path["src/catalog_service/infrastructure/persistence/product.py"]
+    assert "from decimal import Decimal" in orm
+    assert "sku: Mapped[str] = mapped_column(unique=True, index=True)" in orm
+    assert "status: Mapped[Literal['draft', 'active']] = mapped_column(default='draft')" in orm
+    assert "price: Mapped[Decimal] = mapped_column(default=Decimal('0.0'))" in orm
+    assert "active: Mapped[bool] = mapped_column(default=True)" in orm

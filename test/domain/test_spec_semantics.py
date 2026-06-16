@@ -149,3 +149,78 @@ def test_validate_semantics_accepts_numeric_auto_increment(field_type: str) -> N
     )
 
     validate_semantics(spec)
+
+
+def test_validate_semantics_rejects_nullable_primary_key() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {"basePath": "/api/v1", "endpoints": []},
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": "int",
+                            "primaryKey": True,
+                            "nullable": True,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    assert exc_info.value.errors[0].to_dict() == {
+        "message": "Field 'id' is primary_key but nullable.",
+        "model": "Order",
+    }
+
+
+def test_validate_semantics_rejects_invalid_field_metadata() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {"basePath": "/api/v1", "endpoints": []},
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [
+                        {"name": "count", "type": "int", "minLength": 3},
+                        {"name": "status", "type": "string", "minimum": 1},
+                        {"name": "priority", "type": "int", "default": "high"},
+                        {"name": "kind", "type": "string", "enum": ["a"], "default": "b"},
+                    ],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    messages = [error.raw_message for error in exc_info.value.errors]
+    assert any("minLength/maxLength" in message for message in messages)
+    assert any("minimum/maximum" in message for message in messages)
+    assert any("default value 'high' does not match type 'int'" in message for message in messages)
+    assert any("default value 'b' is not in enum" in message for message in messages)

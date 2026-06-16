@@ -10,6 +10,9 @@ from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_endpoints import (
     endpoint_targets_model,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.field_metadata import (
+    pydantic_field_args_for,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
     field_is_generated_on_create,
 )
@@ -19,7 +22,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.python_types import (
     imports_for_fields,
-    python_type_for,
+    nullable_python_type_for,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
 
@@ -28,6 +31,7 @@ from microforge.infrastructure.outbound.generation.template_renderer import Temp
 class SchemaFieldContext:
     """Field data prepared for Pydantic schema templates."""
 
+    assignment: str
     name: str
     python_type: str
 
@@ -107,6 +111,7 @@ class SchemasRenderer:
                     {
                         "class_name": class_name,
                         "fields": [_field_context(field) for field in fields],
+                        "imports_field": any(pydantic_field_args_for(field) for field in fields),
                         "imports": imports_for_fields(fields),
                     },
                 )
@@ -142,9 +147,11 @@ def _writable_fields(model: ModelSpec) -> list[FieldSpec]:
 
 
 def _field_context(field: FieldSpec) -> SchemaFieldContext:
+    field_args = pydantic_field_args_for(field)
     return SchemaFieldContext(
+        assignment=f" = Field({', '.join(field_args)})" if field_args else "",
         name=field.name,
-        python_type=python_type_for(field),
+        python_type=nullable_python_type_for(field),
     )
 
 

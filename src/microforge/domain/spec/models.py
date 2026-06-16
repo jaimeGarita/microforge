@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Any, List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -64,7 +64,16 @@ class FieldSpec(BaseModel):
     name: str
     type: FieldType
     auto_increment: bool = Field(default=False, alias="autoIncrement")
+    default_value: Any | None = Field(default=None, alias="default")
+    enum_values: List[Any] = Field(default_factory=list, alias="enum")
+    index: bool = False
+    max_length: int | None = Field(default=None, alias="maxLength")
+    maximum: int | float | None = None
+    min_length: int | None = Field(default=None, alias="minLength")
+    minimum: int | float | None = None
+    nullable: bool = False
     primary_key: bool = Field(default=False, alias="primaryKey")
+    unique: bool = False
 
 
 class QueryParam(BaseModel):
