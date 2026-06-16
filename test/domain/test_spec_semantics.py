@@ -73,3 +73,79 @@ def test_validate_semantics_flattens_generated_field_errors() -> None:
         "message": "Field 'id' is auto_increment but not primary_key.",
         "model": "Order",
     }
+
+
+def test_validate_semantics_rejects_non_numeric_auto_increment() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {"basePath": "/api/v1", "endpoints": []},
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [
+                        {
+                            "name": "code",
+                            "type": "string",
+                            "autoIncrement": True,
+                            "primaryKey": True,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    errors = exc_info.value.errors
+    assert len(errors) == 1
+    assert errors[0].to_dict() == {
+        "message": (
+            "Field 'code' is auto_increment but type 'string' is not "
+            "autoincrementable. Only int and long are supported."
+        ),
+        "model": "Order",
+    }
+
+
+@pytest.mark.parametrize("field_type", ["int", "long"])
+def test_validate_semantics_accepts_numeric_auto_increment(field_type: str) -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {"basePath": "/api/v1", "endpoints": []},
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [
+                        {
+                            "name": "id",
+                            "type": field_type,
+                            "autoIncrement": True,
+                            "primaryKey": True,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    validate_semantics(spec)

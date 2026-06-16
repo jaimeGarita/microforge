@@ -163,7 +163,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         in by_path["src/orders_service/infrastructure/persistence/order.py"]
     )
     assert (
-        "id: Mapped[UUID] = mapped_column(primary_key=True)"
+        "id: Mapped[UUID] = mapped_column(\n        primary_key=True\n    )"
         in by_path["src/orders_service/infrastructure/persistence/order.py"]
     )
     assert (

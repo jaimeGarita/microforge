@@ -21,6 +21,7 @@ models:
     fields:
       - name: id
         type: uuid
+        primaryKey: true
       - name: status
         type: string
     queries:

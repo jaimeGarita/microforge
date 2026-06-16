@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from microforge.domain.spec.errors import SpecSemanticError, SpecValidationErrors
 from microforge.domain.spec.models import ModelSpec, SpecV1
-from microforge.domain.spec.types import TargetFramework, TargetLanguage
+from microforge.domain.spec.types import FieldType, TargetFramework, TargetLanguage
+
+AUTO_INCREMENT_TYPES = {FieldType.int, FieldType.long}
 
 
 def validate_semantics(spec: SpecV1) -> None:
@@ -86,6 +88,14 @@ def _validate_generated_fields(model: ModelSpec) -> list[SpecSemanticError]:
             errors.append(
                 SpecSemanticError(
                     f"Field '{f.name}' is auto_increment but not primary_key.",
+                    model=model.name,
+                )
+            )
+        if f.auto_increment and f.type not in AUTO_INCREMENT_TYPES:
+            errors.append(
+                SpecSemanticError(
+                    f"Field '{f.name}' is auto_increment but type '{f.type.value}' "
+                    "is not autoincrementable. Only int and long are supported.",
                     model=model.name,
                 )
             )
