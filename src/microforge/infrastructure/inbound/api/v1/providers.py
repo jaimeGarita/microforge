@@ -13,7 +13,8 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.genera
 )
 from microforge.infrastructure.outbound.generation.zip_project_packager import ZipProjectPackager
 from microforge.infrastructure.outbound.spec.yaml_spec_loader import YamlSpecLoader
-
+from microforge.infrastructure.outbound.generation.strategy.defaul_project_generator_registry import default_project_generator_registry
+from microforge.infrastructure.outbound.generation.strategy.target_project_generator import TargetProjectGenerator
 
 @lru_cache(maxsize=1)
 def get_spec_loader() -> YamlSpecLoader:
@@ -30,7 +31,8 @@ def get_validate_spec_port() -> ValidateSpecPort:
 @lru_cache(maxsize=1)
 def get_project_generator() -> PythonFastApiProjectGenerator:
     """Provide a singleton project generator."""
-    return PythonFastApiProjectGenerator()
+    registry = default_project_generator_registry()
+    return TargetProjectGenerator(registry)
 
 
 @lru_cache(maxsize=1)
