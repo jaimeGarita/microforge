@@ -11,12 +11,21 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
     endpoint_has_path_param,
     endpoint_targets_model,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
+    id_field_for,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.python_types import (
+    imports_for_fields,
+    python_type_for,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repository_methods import (
+    RepositoryMethodContext,
     repository_method_for_endpoint,
+    repository_methods_for,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.use_cases import (
     UseCaseContext,
@@ -44,6 +53,28 @@ class RouteContext:
     body_schema_file: str | None
     domain_class_name: str
     domain_module: str
+    id_imports: list[str]
+    id_type: str
+    query_routes: list[QueryRouteContext]
+
+
+@dataclass(frozen=True)
+class QueryParamContext:
+    """Query parameter data prepared for FastAPI route templates."""
+
+    name: str
+    python_type: str
+
+
+@dataclass(frozen=True)
+class QueryRouteContext:
+    """Query use case data prepared for collection GET routes."""
+
+    condition: str
+    params: list[QueryParamContext]
+    provider_name: str
+    use_case: UseCaseContext
+    use_case_param_names: str
 
 
 @dataclass(frozen=True)
@@ -84,15 +115,22 @@ class ApiRoutesRenderer:
                         self.renderer.render(
                             "infrastructure/inbound/api/routes/routes.py.j2",
                             {
-                                "imports_uuid": any(
-                                    route.has_id_param for route in routes
-                                ),
-                                "imports_uuid4": any(
-                                    route.method == "post" for route in routes
-                                ),
+                                "import_lines": _import_lines_for_routes(routes),
                                 "imports_response": any(
                                     route.method == "delete" for route in routes
                                 ),
+                                "imports_query": any(route.query_routes for route in routes),
+                                "imports_http_exception": any(
+                                    route.has_id_param
+                                    and not route.body_schema_class
+                                    and route.method != "delete"
+                                    for route in routes
+                                ),
+                                "imports_api_mapper": any(
+                                    route.method != "delete" for route in routes
+                                ),
+                                "mapper_class_name": f"{model.name}ApiMapper",
+                                "mapper_module": f"{to_snake_case(model.name)}_mapper",
                                 "model_module": to_snake_case(model.name),
                                 "package_name": package_name,
                                 "read_schema_class": f"{model.name}Read",
@@ -100,8 +138,7 @@ class ApiRoutesRenderer:
                                 "router_prefix": router_module.prefix,
                                 "router_tag": router_module.tag,
                                 "imports_read_schema": any(
-                                    f"{model.name}Read" in route.response_model
-                                    for route in routes
+                                    f"{model.name}Read" in route.response_model for route in routes
                                 ),
                                 "imports_create_schema": any(
                                     route.body_schema_class == f"{model.name}Create"
@@ -113,9 +150,7 @@ class ApiRoutesRenderer:
                                 ),
                                 "create_schema_class": f"{model.name}Create",
                                 "update_schema_class": f"{model.name}Update",
-                                "domain_class_name": model.name,
-                                "domain_module": to_snake_case(model.name),
-                            }
+                            },
                         )
                     ),
                 )
@@ -156,6 +191,11 @@ def _routes_for_model(
             continue
         use_case = use_case_for_method(model, method)
         has_id_param = endpoint_has_path_param(endpoint)
+        id_field = id_field_for(model)
+        id_type = python_type_for(id_field) if id_field is not None else "str"
+        query_routes = (
+            _query_routes_for_model(model, endpoints) if method.name == "find_all" else []
+        )
         # determine response model and any body schema required
         body_schema_class = None
         body_schema_file = None
@@ -193,9 +233,60 @@ def _routes_for_model(
                 body_schema_file=body_schema_file,
                 domain_class_name=model.name,
                 domain_module=to_snake_case(model.name),
+                id_imports=imports_for_fields([id_field]) if id_field is not None else [],
+                id_type=id_type,
+                query_routes=query_routes,
             )
         )
     return routes
+
+
+def _query_routes_for_model(
+    model: ModelSpec,
+    endpoints: list[ApiEndpoint],
+) -> list[QueryRouteContext]:
+    query_routes = []
+    for method in repository_methods_for(model, endpoints):
+        if not method.filters:
+            continue
+        use_case = use_case_for_method(model, method)
+        params = _query_params_for_method(method)
+        param_names = [param.name for param in params]
+        query_routes.append(
+            QueryRouteContext(
+                condition=" and ".join(f"{param_name} is not None" for param_name in param_names),
+                params=params,
+                provider_name=f"provide_{use_case.filename}_use_case",
+                use_case=use_case,
+                use_case_param_names=", ".join(param_names),
+            )
+        )
+    return query_routes
+
+
+def _query_params_for_method(method: RepositoryMethodContext) -> list[QueryParamContext]:
+    if not method.params:
+        return []
+    return [
+        QueryParamContext(
+            name=param.split(":", maxsplit=1)[0].strip(),
+            python_type=param.split(":", maxsplit=1)[1].strip(),
+        )
+        for param in method.params.split(",")
+    ]
+
+
+def _import_lines_for_routes(routes: list[RouteContext]) -> list[str]:
+    imports = set()
+    if any(route.has_id_param for route in routes):
+        for route in routes:
+            if not route.has_id_param:
+                continue
+            imports.update(route.id_imports)
+    for route in routes:
+        for query_route in route.query_routes:
+            imports.update(query_route.use_case.imports)
+    return sorted(imports)
 
 
 def _return_statement_for_route(
@@ -207,10 +298,10 @@ def _return_statement_for_route(
     if method == ApiHttpMethod.delete:
         return "return Response(status_code=204)"
     if method in {ApiHttpMethod.post, ApiHttpMethod.put, ApiHttpMethod.patch}:
-        return f"return {model.name}Read(**record.__dict__)"
+        return f"return {model.name}ApiMapper.to_read(record)"
     if has_id_param:
-        return f"return {model.name}Read(**record.__dict__)"
-    return f"return [{model.name}Read(**record.__dict__) for record in records]"
+        return f"return {model.name}ApiMapper.to_read(record)"
+    return f"return {model.name}ApiMapper.to_read_list(records)"
 
 
 def _encode(content: str) -> bytes:

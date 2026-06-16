@@ -7,12 +7,18 @@ from pathlib import Path
 from microforge.application.generation.ports.outbound import ProjectGeneratorPort
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import SpecV1
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_mappers import (
+    ApiMappersRenderer,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_routes import (
     ApiRoutesRenderer,
     router_modules_for_spec,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.domain_models import (
     DomainModelsRenderer,
+)
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.mappers import (
+    MappersRenderer,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
@@ -45,8 +51,10 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
 
     def __init__(self, renderer: TemplateRenderer | None = None):
         self.renderer = renderer or TemplateRenderer(TEMPLATE_DIR)
+        self.api_mappers_renderer = ApiMappersRenderer(self.renderer)
         self.api_routes_renderer = ApiRoutesRenderer(self.renderer)
         self.domain_models_renderer = DomainModelsRenderer(self.renderer)
+        self.mappers_renderer = MappersRenderer(self.renderer)
         self.orm_models_renderer = OrmModelsRenderer(self.renderer)
         self.providers_renderer = ProvidersRenderer(self.renderer)
         self.repository_ports_renderer = RepositoryPortsRenderer(self.renderer)
@@ -74,8 +82,10 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         files.extend(self.repository_ports_renderer.render(spec))
         files.extend(self.use_cases_renderer.render(spec))
         files.extend(self.orm_models_renderer.render(spec))
+        files.extend(self.mappers_renderer.render(spec))
         files.extend(self.repositories_renderer.render(spec))
         files.extend(self.schemas_renderer.render(spec))
+        files.extend(self.api_mappers_renderer.render(spec))
         files.extend(self.providers_renderer.render(spec))
         files.extend(self.api_routes_renderer.render(spec))
         return files

@@ -1,0 +1,36 @@
+from collections.abc import Sequence
+
+from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
+from {{ package_name }}.infrastructure.persistence.{{ orm_module }} import {{ orm_class_name }}
+
+
+class {{ class_name }}:
+    @staticmethod
+    def to_domain(record: {{ orm_class_name }}) -> {{ domain_class_name }}:
+        return {{ domain_class_name }}(
+{% for field in fields %}
+            {{ field.name }}=record.{{ field.name }},
+{% endfor %}
+        )
+
+    @staticmethod
+    def to_orm({{ domain_module }}: {{ domain_class_name }}) -> {{ orm_class_name }}:
+        return {{ orm_class_name }}(
+{% for field in fields %}
+            {{ field.name }}={{ domain_module }}.{{ field.name }},
+{% endfor %}
+        )
+
+    @classmethod
+    def to_domain_list(
+        cls,
+        records: Sequence[{{ orm_class_name }}],
+    ) -> list[{{ domain_class_name }}]:
+        return [cls.to_domain(record) for record in records]
+
+    @classmethod
+    def to_orm_list(
+        cls,
+        {{ domain_module }}s: Sequence[{{ domain_class_name }}],
+    ) -> list[{{ orm_class_name }}]:
+        return [cls.to_orm({{ domain_module }}) for {{ domain_module }} in {{ domain_module }}s]

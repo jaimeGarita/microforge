@@ -1,20 +1,27 @@
-{% if imports_uuid -%}
-from uuid import UUID
-{% endif -%}
-{% if imports_uuid4 -%}
-from uuid import uuid4
+{% for import_line in import_lines -%}
+{{ import_line }}
+{% endfor -%}
+{% if import_lines %}
 
 {% endif -%}
-from fastapi import APIRouter, Depends{% if imports_uuid %}, HTTPException{% endif %}{% if imports_response %}, Response{% endif %}
+from fastapi import APIRouter, Depends{% if imports_http_exception %}, HTTPException{% endif %}{% if imports_query %}, Query{% endif %}{% if imports_response %}, Response{% endif %}
 
 {% for route in routes -%}
 from {{ package_name }}.application.use_cases.{{ model_module }}.{{ route.use_case.filename }} import (
     {{ route.use_case.class_name }},
 )
+{% for query_route in route.query_routes -%}
+from {{ package_name }}.application.use_cases.{{ model_module }}.{{ query_route.use_case.filename }} import (
+    {{ query_route.use_case.class_name }},
+)
+{% endfor -%}
 {% endfor -%}
 from {{ package_name }}.infrastructure.inbound.api.providers import (
 {% for route in routes %}
     {{ route.provider_name }},
+{% for query_route in route.query_routes %}
+    {{ query_route.provider_name }},
+{% endfor %}
 {% endfor %}
 )
 
@@ -27,8 +34,8 @@ from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{
 {% if imports_update_schema %}
 from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_update import {{ update_schema_class }}
 {% endif %}
-{% if imports_create_schema or imports_update_schema %}
-from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
+{% if imports_api_mapper %}
+from {{ package_name }}.infrastructure.inbound.api.mappers.{{ mapper_module }} import {{ mapper_class_name }}
 {% endif %}
 
 router = APIRouter(prefix="{{ router_prefix }}", tags=["{{ router_tag }}"])
@@ -38,11 +45,17 @@ router = APIRouter(prefix="{{ router_prefix }}", tags=["{{ router_tag }}"])
 @router.{{ route.method }}("{{ route.path }}"{% if route.response_model != 'None' %}, response_model={{ route.response_model }}{% endif %})
 def {{ route.function_name }}(
 {% if route.has_id_param %}
-    id: UUID,
+    id: {{ route.id_type }},
 {% endif %}
 {% if route.body_schema_class %}
     payload: {{ route.body_schema_class }},
 {% endif %}
+{% for query_route in route.query_routes %}
+{% for query_param in query_route.params %}
+    {{ query_param.name }}: {{ query_param.python_type }} | None = Query(default=None),
+{% endfor %}
+    {{ query_route.use_case.filename }}_use_case: {{ query_route.use_case.class_name }} = Depends({{ query_route.provider_name }}),
+{% endfor %}
     use_case: {{ route.use_case.class_name }} = Depends({{ route.provider_name }}),
 ) -> {% if route.method == "delete" %}Response{% else %}{{ route.response_model }}{% endif %}:
 {% if route.has_id_param and not route.body_schema_class %}
@@ -62,14 +75,20 @@ def {{ route.function_name }}(
     {{ route.return_statement }}
 {% endif %}
 {% elif route.body_schema_class and route.has_id_param %}
-    domain = {{ domain_class_name }}(id=id, **payload.model_dump())
+    domain = {{ mapper_class_name }}.update_to_domain(id, payload)
     record = use_case.execute(domain)
     {{ route.return_statement }}
 {% elif route.body_schema_class %}
-    domain = {{ domain_class_name }}(id=uuid4(), **payload.model_dump())
+    domain = {{ mapper_class_name }}.create_to_domain(payload)
     record = use_case.execute(domain)
     {{ route.return_statement }}
 {% else %}
+{% for query_route in route.query_routes %}
+    if {{ query_route.condition }}:
+        records = {{ query_route.use_case.filename }}_use_case.execute({{ query_route.use_case_param_names }})
+        return {{ mapper_class_name }}.to_read_list(records)
+
+{% endfor %}
     records = use_case.execute()
     {{ route.return_statement }}
 {% endif %}

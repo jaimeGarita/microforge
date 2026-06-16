@@ -10,6 +10,9 @@ from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_endpoints import (
     endpoint_targets_model,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
+    id_is_uuid,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
@@ -125,7 +128,7 @@ def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPl
     writable_fields = _writable_fields(model)
     return SchemaPlan(
         create_fields=writable_fields if ApiHttpMethod.post in methods else [],
-        read_fields=model.fields if ApiHttpMethod.get in methods else [],
+        read_fields=model.fields if methods - {ApiHttpMethod.delete} else [],
         update_fields=(
             writable_fields
             if methods.intersection({ApiHttpMethod.put, ApiHttpMethod.patch})
@@ -135,7 +138,9 @@ def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPl
 
 
 def _writable_fields(model: ModelSpec) -> list[FieldSpec]:
-    return [field for field in model.fields if field.name != "id"]
+    if id_is_uuid(model):
+        return [field for field in model.fields if field.name != "id"]
+    return model.fields
 
 
 def _field_context(field: FieldSpec) -> SchemaFieldContext:

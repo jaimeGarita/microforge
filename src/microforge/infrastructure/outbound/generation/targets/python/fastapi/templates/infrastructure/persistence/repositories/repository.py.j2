@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from {{ package_name }}.application.ports.repositories.{{ port_module }} import {{ port_class_name }}
 from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
 from {{ package_name }}.infrastructure.persistence.{{ orm_module }} import {{ orm_class_name }}
+from {{ package_name }}.infrastructure.persistence.mappers.{{ mapper_module }} import {{ mapper_class_name }}
 
 
 class {{ class_name }}({{ port_class_name }}):
@@ -20,30 +21,30 @@ class {{ class_name }}({{ port_class_name }}):
 
     def find_all(self) -> list[{{ domain_class_name }}]:
         records = self.session.scalars(select({{ orm_class_name }})).all()
-        return [self._to_domain(record) for record in records]
+        return {{ mapper_class_name }}.to_domain_list(records)
 {% elif method.name == "find_by_id" %}
 
-    def find_by_id(self, id: UUID) -> {{ domain_class_name }} | None:
+    def find_by_id(self, {{ method.params }}) -> {{ domain_class_name }} | None:
         record = self.session.get({{ orm_class_name }}, id)
         if record is None:
             return None
-        return self._to_domain(record)
+        return {{ mapper_class_name }}.to_domain(record)
 {% elif method.name == "save" %}
 
     def save(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ domain_class_name }}:
-        record = self._to_orm({{ domain_module }})
+        record = {{ mapper_class_name }}.to_orm({{ domain_module }})
         self.session.add(record)
         self.session.flush()
-        return self._to_domain(record)
+        return {{ mapper_class_name }}.to_domain(record)
 {% elif method.name == "update" %}
 
     def update(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ domain_class_name }}:
-        record = self.session.merge(self._to_orm({{ domain_module }}))
+        record = self.session.merge({{ mapper_class_name }}.to_orm({{ domain_module }}))
         self.session.flush()
-        return self._to_domain(record)
+        return {{ mapper_class_name }}.to_domain(record)
 {% elif method.name == "delete_by_id" %}
 
-    def delete_by_id(self, id: UUID) -> None:
+    def delete_by_id(self, {{ method.params }}) -> None:
         record = self.session.get({{ orm_class_name }}, id)
         if record is not None:
             self.session.delete(record)
@@ -57,20 +58,6 @@ class {{ class_name }}({{ port_class_name }}):
             .where({{ filter.expression }})
 {% endfor %}
         ).all()
-        return [self._to_domain(record) for record in records]
+        return {{ mapper_class_name }}.to_domain_list(records)
 {% endif %}
 {% endfor %}
-
-    def _to_domain(self, record: {{ orm_class_name }}) -> {{ domain_class_name }}:
-        return {{ domain_class_name }}(
-{% for field in field_mappings %}
-            {{ field.name }}=record.{{ field.name }},
-{% endfor %}
-        )
-
-    def _to_orm(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ orm_class_name }}:
-        return {{ orm_class_name }}(
-{% for field in field_mappings %}
-            {{ field.name }}={{ domain_module }}.{{ field.name }},
-{% endfor %}
-        )

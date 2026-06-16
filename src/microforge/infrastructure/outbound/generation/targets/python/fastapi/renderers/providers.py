@@ -15,7 +15,9 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
     to_snake_case,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repository_methods import (
+    RepositoryMethodContext,
     repository_method_for_endpoint,
+    repository_methods_for,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.use_cases import (
     UseCaseContext,
@@ -105,8 +107,7 @@ def _providers_for_spec(spec: SpecV1) -> list[ProviderContext]:
                     function_name=f"provide_{use_case.filename}_use_case",
                     import_class_name=use_case.class_name,
                     import_module=(
-                        f"application.use_cases.{to_snake_case(model.name)}."
-                        f"{use_case.filename}"
+                        f"application.use_cases.{to_snake_case(model.name)}." f"{use_case.filename}"
                     ),
                     repository_class_name=f"SqlAlchemy{model.name}Repository",
                     repository_module=(
@@ -116,6 +117,30 @@ def _providers_for_spec(spec: SpecV1) -> list[ProviderContext]:
                     has_id_param=has_id,
                     body_schema_class=body_schema_class,
                     body_schema_file=body_schema_file,
+                    domain_class_name=model.name,
+                    domain_module=to_snake_case(model.name),
+                )
+            )
+        for method in _query_methods_for_model(model, spec.api.endpoints):
+            use_case = use_case_for_method(model, method)
+            if use_case.filename in seen:
+                continue
+            seen.add(use_case.filename)
+            providers.append(
+                ProviderContext(
+                    function_name=f"provide_{use_case.filename}_use_case",
+                    import_class_name=use_case.class_name,
+                    import_module=(
+                        f"application.use_cases.{to_snake_case(model.name)}." f"{use_case.filename}"
+                    ),
+                    repository_class_name=f"SqlAlchemy{model.name}Repository",
+                    repository_module=(
+                        f"infrastructure.persistence.repositories."
+                        f"{to_snake_case(model.name)}_repository"
+                    ),
+                    has_id_param=False,
+                    body_schema_class=None,
+                    body_schema_file=None,
                     domain_class_name=model.name,
                     domain_module=to_snake_case(model.name),
                 )
@@ -151,6 +176,13 @@ def _use_case_for_endpoint(
     if method is None:
         return None
     return use_case_for_method(model, method)
+
+
+def _query_methods_for_model(
+    model: ModelSpec,
+    endpoints: list[ApiEndpoint],
+) -> list[RepositoryMethodContext]:
+    return [method for method in repository_methods_for(model, endpoints) if method.filters]
 
 
 def _encode(content: str) -> bytes:

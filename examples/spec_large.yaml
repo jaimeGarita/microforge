@@ -44,7 +44,7 @@ models:
   - name: Customer
     fields:
       - name: id
-        type: uuid
+        type: int
       - name: email
         type: string
       - name: name

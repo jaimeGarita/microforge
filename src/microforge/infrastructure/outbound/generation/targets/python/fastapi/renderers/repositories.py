@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
-from microforge.domain.spec.models import FieldSpec, ModelSpec, SpecV1
+from microforge.domain.spec.models import ModelSpec, SpecV1
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
@@ -20,13 +20,6 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
     repository_methods_for,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
-
-
-@dataclass(frozen=True)
-class FieldMappingContext:
-    """Field mapping data prepared for repository templates."""
-
-    name: str
 
 
 @dataclass(frozen=True)
@@ -81,8 +74,9 @@ class RepositoriesRenderer:
                 "class_name": f"SqlAlchemy{model.name}Repository",
                 "domain_class_name": model.name,
                 "domain_module": to_snake_case(model.name),
-                "field_mappings": [_field_mapping(field) for field in model.fields],
                 "imports": imports_for_repository_methods(methods),
+                "mapper_class_name": f"{model.name}Mapper",
+                "mapper_module": f"{to_snake_case(model.name)}_mapper",
                 "methods": [
                     _implementation_method(method, f"{model.name}ORM") for method in methods
                 ],
@@ -93,10 +87,6 @@ class RepositoriesRenderer:
                 "port_module": f"{to_snake_case(model.name)}_repository",
             },
         )
-
-
-def _field_mapping(field: FieldSpec) -> FieldMappingContext:
-    return FieldMappingContext(name=field.name)
 
 
 def _implementation_method(

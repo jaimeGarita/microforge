@@ -1,0 +1,53 @@
+{% if has_read %}
+from collections.abc import Sequence
+{% endif -%}
+{% if has_update %}
+{% for import_line in id_imports %}
+{{ import_line }}
+{% endfor %}
+{% endif -%}
+{% if has_create and id_is_uuid %}
+from uuid import uuid4
+{% endif %}
+
+from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
+{% if has_create %}
+from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_create import {{ create_schema_class }}
+{% endif -%}
+{% if has_read %}
+from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_read import {{ read_schema_class }}
+{% endif -%}
+{% if has_update %}
+from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_update import {{ update_schema_class }}
+{% endif %}
+
+
+class {{ class_name }}:
+{% if has_create %}
+    @staticmethod
+    def create_to_domain(payload: {{ create_schema_class }}) -> {{ domain_class_name }}:
+{% if id_is_uuid %}
+        return {{ domain_class_name }}(id=uuid4(), **payload.model_dump())
+{% else %}
+        return {{ domain_class_name }}(**payload.model_dump())
+{% endif %}
+{% endif %}
+{% if has_update %}
+
+    @staticmethod
+    def update_to_domain(id: {{ id_type }}, payload: {{ update_schema_class }}) -> {{ domain_class_name }}:
+        return {{ domain_class_name }}(id=id, **payload.model_dump())
+{% endif %}
+{% if has_read %}
+
+    @staticmethod
+    def to_read({{ domain_module }}: {{ domain_class_name }}) -> {{ read_schema_class }}:
+        return {{ read_schema_class }}(**{{ domain_module }}.__dict__)
+
+    @classmethod
+    def to_read_list(
+        cls,
+        {{ domain_module }}s: Sequence[{{ domain_class_name }}],
+    ) -> list[{{ read_schema_class }}]:
+        return [cls.to_read({{ domain_module }}) for {{ domain_module }} in {{ domain_module }}s]
+{% endif %}
