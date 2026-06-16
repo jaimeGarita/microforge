@@ -10,5 +10,11 @@ class {{ class_name }}ORM(Base):
     __tablename__ = "{{ table_name }}"
 
 {% for field in fields %}
-    {{ field.name }}: Mapped[{{ field.python_type }}] = mapped_column({{ field.column_args }})
+{% if field.column_args %}
+    {{ field.name }}: Mapped[{{ field.python_type }}] = mapped_column(
+        {{ field.column_args }}
+    )
+{% else %}
+    {{ field.name }}: Mapped[{{ field.python_type }}] = mapped_column()
+{% endif %}
 {% endfor %}

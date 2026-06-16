@@ -132,6 +132,10 @@ def test_generator_creates_non_get_routes() -> None:
     assert "def find_by_status(self, status_in: list[str]) -> list[Order]:" in order_repository
     assert ".where(OrderORM.status.in_(status_in))" in order_repository
 
+    customer_orm = by_path["src/commerce_service/infrastructure/persistence/customer.py"]
+    assert "id: Mapped[int] = mapped_column(" in customer_orm
+    assert "primary_key=True, autoincrement=True" in customer_orm
+
 
 def test_generator_uses_declared_id_type() -> None:
     files = fastapi_generator.PythonFastApiProjectGenerator().generate(_integer_id_spec())

@@ -25,6 +25,8 @@ class OrmFieldContext:
     name: str
     python_type: str
     column_args: str
+    auto_increment: bool
+    primary_key: bool
 
 
 class OrmModelsRenderer:
@@ -84,16 +86,21 @@ class OrmModelsRenderer:
 
 def _field_context(field: FieldSpec) -> OrmFieldContext:
     return OrmFieldContext(
+        auto_increment=field.auto_increment,
         name=field.name,
         python_type=python_type_for(field),
         column_args=_column_args_for(field),
+        primary_key=field.primary_key,
     )
 
 
 def _column_args_for(field: FieldSpec) -> str:
-    if field.name == "id":
-        return "primary_key=True"
-    return ""
+    args: list[str] = []
+    if field.primary_key:
+        args.append("primary_key=True")
+    if field.auto_increment:
+        args.append("autoincrement=True")
+    return ", ".join(args)
 
 
 def _encode(content: str) -> bytes:
