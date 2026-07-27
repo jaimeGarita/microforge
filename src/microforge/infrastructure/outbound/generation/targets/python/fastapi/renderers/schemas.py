@@ -6,9 +6,10 @@ from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import ApiEndpoint, FieldSpec, ModelSpec, SpecV1
-from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_endpoints import (
+    EndpointAction,
     endpoint_targets_model,
+    infer_endpoint_action,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.field_metadata import (
     pydantic_field_args_for,
@@ -129,16 +130,16 @@ class SchemaPlan:
 
 
 def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPlan:
-    methods = {endpoint.method for endpoint in endpoints if endpoint_targets_model(endpoint, model)}
+    actions = {
+        infer_endpoint_action(endpoint)
+        for endpoint in endpoints
+        if endpoint_targets_model(endpoint, model)
+    }
     writable_fields = _writable_fields(model)
     return SchemaPlan(
-        create_fields=writable_fields if ApiHttpMethod.post in methods else [],
-        read_fields=model.fields if methods - {ApiHttpMethod.delete} else [],
-        update_fields=(
-            writable_fields
-            if methods.intersection({ApiHttpMethod.put, ApiHttpMethod.patch})
-            else []
-        ),
+        create_fields=writable_fields if EndpointAction.create in actions else [],
+        read_fields=model.fields if actions - {EndpointAction.delete, None} else [],
+        update_fields=(writable_fields if EndpointAction.update in actions else []),
     )
 
 

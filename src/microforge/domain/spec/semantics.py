@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from microforge.domain.spec.errors import SpecSemanticError, SpecValidationErrors
-from microforge.domain.spec.models import ModelSpec, SpecV1
-from microforge.domain.spec.types import FieldType, TargetFramework, TargetLanguage
+from microforge.domain.spec.models import ApiEndpoint, ModelSpec, SpecV1
+from microforge.domain.spec.types import ApiHttpMethod, FieldType, TargetFramework, TargetLanguage
 
 AUTO_INCREMENT_TYPES = {FieldType.int, FieldType.long}
 NUMERIC_TYPES = {FieldType.int, FieldType.long, FieldType.decimal}
@@ -35,6 +35,8 @@ def _validate_model_rules(spec: SpecV1) -> list[SpecSemanticError]:
     """Run model-specific semantic checks."""
     errors: list[SpecSemanticError] = []
     model_fields = _index_model_fields(spec)
+    errors.extend(_validate_endpoints_refer_existing_models(spec, model_fields))
+    errors.extend(_validate_endpoint_filters_refer_existing_fields(spec, model_fields))
     errors.extend(_validate_queries_refer_existing_fields(spec, model_fields))
     errors.extend(_validate_feature_coherence(spec))
     for model in spec.models:
@@ -46,6 +48,77 @@ def _validate_model_rules(spec: SpecV1) -> list[SpecSemanticError]:
 def _index_model_fields(spec: SpecV1) -> dict[str, set[str]]:
     """Return a mapping of model name -> set of field names."""
     return {m.name: {f.name for f in m.fields} for m in spec.models}
+
+
+def _validate_endpoints_refer_existing_models(
+    spec: SpecV1,
+    model_fields: dict[str, set[str]],
+) -> list[SpecSemanticError]:
+    """Ensure endpoint model references point to declared models."""
+    errors: list[SpecSemanticError] = []
+    for endpoint in spec.api.endpoints:
+        if endpoint.model is not None and endpoint.model not in model_fields:
+            errors.append(
+                SpecSemanticError(
+                    f"Endpoint '{endpoint.name}' references missing model "
+                    f"'{endpoint.model}'. Valid models: {sorted(model_fields)}",
+                )
+            )
+    return errors
+
+
+def _validate_endpoint_filters_refer_existing_fields(
+    spec: SpecV1,
+    model_fields: dict[str, set[str]],
+) -> list[SpecSemanticError]:
+    """Ensure endpoint filters point to fields from the endpoint model."""
+    errors: list[SpecSemanticError] = []
+    for endpoint in spec.api.endpoints:
+        if not endpoint.filters:
+            continue
+        if not _endpoint_supports_filters(endpoint):
+            errors.append(
+                SpecSemanticError(
+                    f"Endpoint '{endpoint.name}' defines filters but is not a "
+                    "collection GET endpoint.",
+                    model=endpoint.model,
+                )
+            )
+        if endpoint.model is None:
+            errors.append(
+                SpecSemanticError(
+                    f"Endpoint '{endpoint.name}' defines filters but does not " "declare a model.",
+                )
+            )
+            continue
+        if endpoint.model not in model_fields:
+            continue
+        allowed = model_fields[endpoint.model]
+        unknown = [
+            filter_param.field
+            for filter_param in endpoint.filters
+            if filter_param.field not in allowed
+        ]
+        if unknown:
+            errors.append(
+                SpecSemanticError(
+                    f"Endpoint '{endpoint.name}' filters reference missing fields: "
+                    f"{unknown}. Valid fields: {sorted(allowed)}",
+                    model=endpoint.model,
+                )
+            )
+    return errors
+
+
+def _endpoint_supports_filters(endpoint: ApiEndpoint) -> bool:
+    return endpoint.method == ApiHttpMethod.get and not _endpoint_has_path_param(endpoint)
+
+
+def _endpoint_has_path_param(endpoint: ApiEndpoint) -> bool:
+    return any(
+        segment.startswith("{") and segment.endswith("}")
+        for segment in endpoint.path.strip("/").split("/")
+    )
 
 
 def _validate_queries_refer_existing_fields(

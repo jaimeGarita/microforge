@@ -37,12 +37,21 @@ class ServiceConfig(BaseModel):
     description: str | None = None
 
 
+class QueryParam(BaseModel):
+    """Filter parameter used by a query."""
+
+    field: str
+    op: QueryOp = QueryOp.eq
+
+
 class ApiEndpoint(BaseModel):
     """Single HTTP endpoint definition."""
 
     name: str
     path: str
     method: ApiHttpMethod = ApiHttpMethod.get
+    model: str | None = None
+    filters: List[QueryParam] = Field(default_factory=list)
 
 
 class ApiConfig(BaseModel):
@@ -74,13 +83,6 @@ class FieldSpec(BaseModel):
     nullable: bool = False
     primary_key: bool = Field(default=False, alias="primaryKey")
     unique: bool = False
-
-
-class QueryParam(BaseModel):
-    """Filter parameter used by a query."""
-
-    field: str
-    op: QueryOp = QueryOp.eq
 
 
 class QuerySpec(BaseModel):

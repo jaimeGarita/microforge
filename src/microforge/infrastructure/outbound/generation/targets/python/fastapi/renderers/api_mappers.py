@@ -6,9 +6,10 @@ from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import ApiEndpoint, ModelSpec, SpecV1
-from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_endpoints import (
+    EndpointAction,
     endpoint_targets_model,
+    infer_endpoint_action,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
     id_field_for,
@@ -95,11 +96,15 @@ class ApiMappersRenderer:
 
 
 def _mapper_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> ApiMapperPlan:
-    methods = {endpoint.method for endpoint in endpoints if endpoint_targets_model(endpoint, model)}
+    actions = {
+        infer_endpoint_action(endpoint)
+        for endpoint in endpoints
+        if endpoint_targets_model(endpoint, model)
+    }
     return ApiMapperPlan(
-        has_create=ApiHttpMethod.post in methods,
-        has_read=bool(methods - {ApiHttpMethod.delete}),
-        has_update=bool(methods.intersection({ApiHttpMethod.put, ApiHttpMethod.patch})),
+        has_create=EndpointAction.create in actions,
+        has_read=bool(actions - {EndpointAction.delete, None}),
+        has_update=EndpointAction.update in actions,
     )
 
 

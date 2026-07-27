@@ -224,3 +224,95 @@ def test_validate_semantics_rejects_invalid_field_metadata() -> None:
     assert any("minimum/maximum" in message for message in messages)
     assert any("default value 'high' does not match type 'int'" in message for message in messages)
     assert any("default value 'b' is not in enum" in message for message in messages)
+
+
+def test_validate_semantics_rejects_endpoint_filters_for_missing_fields() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {
+                "basePath": "/api/v1",
+                "endpoints": [
+                    {
+                        "name": "listOrders",
+                        "model": "Order",
+                        "path": "/orders",
+                        "method": "GET",
+                        "filters": [{"field": "missing", "op": "eq"}],
+                    }
+                ],
+            },
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [{"name": "id", "type": "uuid", "primaryKey": True}],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    assert exc_info.value.errors[0].to_dict() == {
+        "message": (
+            "Endpoint 'listOrders' filters reference missing fields: "
+            "['missing']. Valid fields: ['id']"
+        ),
+        "model": "Order",
+    }
+
+
+def test_validate_semantics_rejects_filters_on_non_collection_get_endpoints() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "specVersion": 1,
+            "project": {"name": "orders-service", "packageName": "orders_service"},
+            "target": {
+                "language": "python",
+                "framework": "fastapi",
+                "pythonVersion": "3.12",
+                "packaging": "poetry",
+            },
+            "service": {"name": "orders"},
+            "api": {
+                "basePath": "/api/v1",
+                "endpoints": [
+                    {
+                        "name": "getOrderById",
+                        "model": "Order",
+                        "path": "/orders/{id}",
+                        "method": "GET",
+                        "filters": [{"field": "status", "op": "eq"}],
+                    }
+                ],
+            },
+            "models": [
+                {
+                    "name": "Order",
+                    "fields": [
+                        {"name": "id", "type": "uuid", "primaryKey": True},
+                        {"name": "status", "type": "string"},
+                    ],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    assert exc_info.value.errors[0].to_dict() == {
+        "message": (
+            "Endpoint 'getOrderById' defines filters but is not a collection " "GET endpoint."
+        ),
+        "model": "Order",
+    }

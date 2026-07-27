@@ -14,30 +14,60 @@ api:
   basePath: /api/v1
   endpoints:
     - name: listCustomers
+      model: Customer
       path: /customers
       method: GET
+      filters:
+        - field: email
+          op: eq
+        - field: name
+          op: like
+        - field: created_at
+          op: gte
     - name: getCustomerById
+      model: Customer
       path: /customers/{id}
       method: GET
     - name: createCustomer
+      model: Customer
       path: /customers
       method: POST
     - name: updateCustomer
+      model: Customer
       path: /customers/{id}
       method: PATCH
     - name: deleteCustomer
+      model: Customer
       path: /customers/{id}
       method: DELETE
     - name: listProducts
+      model: Product
       path: /products
       method: GET
+      filters:
+        - field: sku
+          op: eq
+        - field: price
+          op: lte
+        - field: stock
+          op: gt
     - name: createProduct
+      model: Product
       path: /products
       method: POST
     - name: listOrders
+      model: Order
       path: /orders
       method: GET
+      filters:
+        - field: customer_id
+          op: eq
+        - field: status
+          op: in
+        - field: total_amount
+          op: gte
     - name: getOrderById
+      model: Order
       path: /orders/{id}
       method: GET
 models:
@@ -55,19 +85,6 @@ models:
         type: boolean
       - name: created_at
         type: instant
-    queries:
-      - name: by_email
-        params:
-          - field: email
-            op: eq
-      - name: by_name_like
-        params:
-          - field: name
-            op: like
-      - name: by_created_at_gte
-        params:
-          - field: created_at
-            op: gte
     features:
       repository: true
   - name: Product
@@ -84,19 +101,6 @@ models:
         type: int
       - name: active
         type: boolean
-    queries:
-      - name: by_sku
-        params:
-          - field: sku
-            op: eq
-      - name: by_price_lte
-        params:
-          - field: price
-            op: lte
-      - name: by_stock_gt
-        params:
-          - field: stock
-            op: gt
     features:
       repository: true
   - name: Order
@@ -111,18 +115,5 @@ models:
         type: decimal
       - name: placed_at
         type: instant
-    queries:
-      - name: by_customer_id
-        params:
-          - field: customer_id
-            op: eq
-      - name: by_status
-        params:
-          - field: status
-            op: in
-      - name: by_total_amount_gte
-        params:
-          - field: total_amount
-            op: gte
     features:
       repository: true

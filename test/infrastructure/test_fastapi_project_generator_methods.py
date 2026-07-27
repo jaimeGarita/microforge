@@ -251,25 +251,48 @@ def test_generator_creates_non_get_routes() -> None:
     assert "customer_id: UUID | None = Query(default=None)," in order_routes
     assert "status_in: list[str] | None = Query(default=None)," in order_routes
     assert "total_amount_gte: Decimal | None = Query(default=None)," in order_routes
-    assert "if status_in is not None:" in order_routes
-    assert "records = find_orders_by_status_use_case.execute(status_in)" in order_routes
+    assert (
+        "if customer_id is not None and status_in is not None and total_amount_gte is not None:"
+        in order_routes
+    )
+    assert (
+        "records = find_orders_by_customer_id_and_status_in_and_total_amount_gte_use_case.execute("
+        "customer_id, status_in, total_amount_gte)" in order_routes
+    )
 
     order_use_case = by_path[
-        "src/commerce_service/application/use_cases/order/find_orders_by_status.py"
+        "src/commerce_service/application/use_cases/order/"
+        "find_orders_by_customer_id_and_status_in_and_total_amount_gte.py"
     ]
-    assert "def execute(self, status_in: list[str]) -> list[Order]:" in order_use_case
-    assert "return self.repository.find_by_status(status_in)" in order_use_case
+    assert (
+        "def execute(self, customer_id: UUID, status_in: list[str], "
+        "total_amount_gte: Decimal) -> list[Order]:" in order_use_case
+    )
+    assert (
+        "return self.repository.find_by_customer_id_and_status_in_and_total_amount_gte("
+        "customer_id, status_in, total_amount_gte)" in order_use_case
+    )
 
     order_repository_port = by_path[
         "src/commerce_service/application/ports/repositories/order_repository.py"
     ]
-    assert "def find_by_status(self, status_in: list[str]) -> list[Order]:" in order_repository_port
+    assert (
+        "def find_by_customer_id_and_status_in_and_total_amount_gte("
+        "self, customer_id: UUID, status_in: list[str], total_amount_gte: Decimal"
+        ") -> list[Order]:" in order_repository_port
+    )
 
     order_repository = by_path[
         "src/commerce_service/infrastructure/persistence/repositories/order_repository.py"
     ]
-    assert "def find_by_status(self, status_in: list[str]) -> list[Order]:" in order_repository
+    assert (
+        "def find_by_customer_id_and_status_in_and_total_amount_gte("
+        "self, customer_id: UUID, status_in: list[str], total_amount_gte: Decimal"
+        ") -> list[Order]:" in order_repository
+    )
+    assert ".where(OrderORM.customer_id == customer_id)" in order_repository
     assert ".where(OrderORM.status.in_(status_in))" in order_repository
+    assert ".where(OrderORM.total_amount >= total_amount_gte)" in order_repository
 
     customer_orm = by_path["src/commerce_service/infrastructure/persistence/customer.py"]
     assert "id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)" in customer_orm

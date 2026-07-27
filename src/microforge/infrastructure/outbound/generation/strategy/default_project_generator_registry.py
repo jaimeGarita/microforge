@@ -8,6 +8,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.genera
     PythonFastApiProjectGenerator,
 )
 
+
 def default_project_generator_registry() -> ProjectGeneratorRegistry:
     return ProjectGeneratorRegistry(
         {

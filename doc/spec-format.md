@@ -3,6 +3,81 @@
 This document describes the Microforge YAML spec fields currently supported by
 the FastAPI generator.
 
+## API Endpoints
+
+Endpoints describe the HTTP surface generated for each model.
+
+```yaml
+api:
+  basePath: /api/v1
+  endpoints:
+    - name: listCustomers
+      model: Customer
+      path: /customers
+      method: GET
+      filters:
+        - field: email
+          op: eq
+        - field: created_at
+          op: gte
+
+    - name: createCustomer
+      model: Customer
+      path: /customers
+      method: POST
+```
+
+### Endpoint Properties
+
+| Property | Required | Description |
+| --- | --- | --- |
+| `name` | Yes | Logical endpoint name. Used to derive generated names. |
+| `model` | Recommended | Model handled by the endpoint. Required when using `filters`. |
+| `path` | Yes | Route path below `api.basePath`. |
+| `method` | No | HTTP method. Defaults to `GET`. |
+| `filters` | No | Query filters accepted by collection `GET` endpoints without path parameters. |
+
+When `filters` are declared, Microforge generates:
+
+- FastAPI query parameters.
+- An application use case.
+- A repository port method.
+- A SQLAlchemy repository implementation.
+
+For example:
+
+```yaml
+filters:
+  - field: email
+    op: eq
+  - field: created_at
+    op: gte
+```
+
+generates a repository method named:
+
+```python
+find_by_email_and_created_at_gte(...)
+```
+
+### Supported Filter Operators
+
+| Operator | Meaning |
+| --- | --- |
+| `eq` | Equal |
+| `ne` | Not equal |
+| `lt` | Less than |
+| `lte` | Less than or equal |
+| `gt` | Greater than |
+| `gte` | Greater than or equal |
+| `like` | SQL LIKE |
+| `not_like` | Negated SQL LIKE |
+| `in` | SQL IN |
+| `not_in` | Negated SQL IN |
+| `contains` | SQL contains |
+| `startswith` | Starts with |
+| `endswith` | Ends with |
+
 ## Field Metadata
 
 Each model field supports structural metadata:
@@ -62,6 +137,9 @@ Microforge validates model metadata before generation:
 - `minimum` cannot be greater than `maximum`.
 - `default` must match the field type.
 - If `enum` is present, `default` must be one of the enum values.
+- Endpoint `model` references must point to declared models.
+- Endpoint `filters` require `model`.
+- Endpoint `filters` must reference fields from the endpoint model.
 
 ## Generated Examples
 

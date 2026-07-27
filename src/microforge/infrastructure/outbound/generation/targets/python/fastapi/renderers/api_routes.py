@@ -6,10 +6,11 @@ from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import ApiEndpoint, ModelSpec, SpecV1
-from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.api_endpoints import (
+    EndpointAction,
     endpoint_has_path_param,
     endpoint_targets_model,
+    infer_endpoint_action,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
     id_field_for,
@@ -190,6 +191,7 @@ def _routes_for_model(
         if method is None:
             continue
         use_case = use_case_for_method(model, method)
+        action = infer_endpoint_action(endpoint)
         has_id_param = endpoint_has_path_param(endpoint)
         id_field = id_field_for(model)
         id_type = python_type_for(id_field) if id_field is not None else "str"
@@ -199,17 +201,17 @@ def _routes_for_model(
         # determine response model and any body schema required
         body_schema_class = None
         body_schema_file = None
-        if method.name == "save":
+        if action == EndpointAction.create:
             body_schema_class = f"{model.name}Create"
             body_schema_file = f"{to_snake_case(model.name)}_create"
             response_model = f"{model.name}Read"
-        elif method.name == "update":
+        elif action == EndpointAction.update:
             body_schema_class = f"{model.name}Update"
             body_schema_file = f"{to_snake_case(model.name)}_update"
             response_model = f"{model.name}Read"
-        elif method.name == "delete_by_id":
+        elif action == EndpointAction.delete:
             response_model = "None"
-        elif method.name == "find_by_id":
+        elif action == EndpointAction.get:
             response_model = f"{model.name}Read"
         else:
             response_model = f"list[{model.name}Read]"
@@ -224,7 +226,7 @@ def _routes_for_model(
                 return_statement=_return_statement_for_route(
                     model,
                     has_id_param,
-                    endpoint.method,
+                    action,
                 ),
                 use_case=use_case,
                 method=endpoint.method.value.lower(),
@@ -292,12 +294,12 @@ def _import_lines_for_routes(routes: list[RouteContext]) -> list[str]:
 def _return_statement_for_route(
     model: ModelSpec,
     has_id_param: bool,
-    method: ApiHttpMethod,
+    action: EndpointAction | None,
 ) -> str:
-    """Compute the return statement for a route depending on HTTP method."""
-    if method == ApiHttpMethod.delete:
+    """Compute the return statement for a route depending on endpoint action."""
+    if action == EndpointAction.delete:
         return "return Response(status_code=204)"
-    if method in {ApiHttpMethod.post, ApiHttpMethod.put, ApiHttpMethod.patch}:
+    if action in {EndpointAction.create, EndpointAction.update}:
         return f"return {model.name}ApiMapper.to_read(record)"
     if has_id_param:
         return f"return {model.name}ApiMapper.to_read(record)"
