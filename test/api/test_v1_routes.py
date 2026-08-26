@@ -2,13 +2,9 @@ import pathlib
 import zipfile
 from io import BytesIO
 
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from microforge.infrastructure.inbound.api.v1.routes import router
-
-app = FastAPI(title="microforge API")
-app.include_router(router, prefix="/api/v1")
+from main import app
 
 
 def _read_bytes(path: str) -> bytes:
@@ -20,6 +16,13 @@ def test_health_endpoint() -> None:
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_health_endpoint_sets_cors_headers_for_astro() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/health", headers={"Origin": "http://localhost:4321"})
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:4321"
 
 
 def test_validate_accepts_valid_yaml() -> None:

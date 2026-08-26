@@ -64,6 +64,8 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "from orders_service.infrastructure.persistence.session import init_db"
         in by_path[main_path]
     )
+    assert "from fastapi.middleware.cors import CORSMiddleware" in by_path[main_path]
+    assert "allow_origins=ALLOWED_ORIGINS" in by_path[main_path]
     assert "init_db()" in by_path[main_path]
     assert 'app.include_router(order_router, prefix="/api/v1")' in by_path[main_path]
     assert '@app.get("/api/v1/health")' in by_path[main_path]

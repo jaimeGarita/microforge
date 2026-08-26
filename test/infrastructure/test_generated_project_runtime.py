@@ -51,9 +51,10 @@ from fastapi.testclient import TestClient
 from runtime_service.main import app
 
 with TestClient(app) as client:
-    health = client.get('/api/v1/health')
+    health = client.get('/api/v1/health', headers={'Origin': 'http://localhost:4321'})
     assert health.status_code == 200, health.text
     assert health.json() == {'status': 'ok'}
+    assert health.headers['access-control-allow-origin'] == 'http://localhost:4321'
     items = client.get('/api/v1/items')
     assert items.status_code == 200, items.text
     assert items.json() == []

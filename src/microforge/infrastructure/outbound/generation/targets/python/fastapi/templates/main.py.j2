@@ -1,12 +1,25 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 {% for router in routers %}
 from {{ package_name }}.infrastructure.inbound.api.routes.{{ router.module_name }} import router as {{ router.router_variable }}
 {% endfor %}
 from {{ package_name }}.infrastructure.persistence.session import init_db
 
+ALLOWED_ORIGINS = [
+    "http://localhost:4321",
+    "http://127.0.0.1:4321",
+]
+
 init_db()
 
 app = FastAPI(title={{ app_title | tojson }})
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 {% for router in routers %}
 app.include_router({{ router.router_variable }}, prefix={{ api_base_path | tojson }})
 {% endfor %}
