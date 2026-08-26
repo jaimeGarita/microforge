@@ -28,6 +28,10 @@ pyproject.toml
 src/<packageName>/main.py
 src/<packageName>/domain/models/__init__.py
 src/<packageName>/domain/models/<model>.py
+src/<packageName>/application/ports/repositories/
+src/<packageName>/application/use_cases/
+src/<packageName>/infrastructure/inbound/api/
+src/<packageName>/infrastructure/persistence/
 ```
 
 For the example spec in [examples/spec_valid.yaml](examples/spec_valid.yaml), Microforge generates:
@@ -373,6 +377,13 @@ Run lint:
 uv run ruff check .
 ```
 
+Run formatting and type checks:
+
+```bash
+uv run ruff format --check .
+uv run mypy src
+```
+
 ## Adding New Generated Files
 
 There are two common cases.
@@ -419,7 +430,7 @@ Each target should implement `ProjectGeneratorPort` and return:
 list[ProjectFile]
 ```
 
-When a second target exists, add a registry that resolves a generator from:
+The generator registry resolves an implementation from:
 
 ```text
 spec.target.language
@@ -439,9 +450,8 @@ spec.target.framework
 
 Suggested next steps:
 
-1. Simplify the target folder structure if it starts to feel too deep.
-2. Make static template rendering more declarative.
-3. Generate Pydantic schemas per model.
-4. Generate API routes.
-5. Add a target registry before adding Java or Go.
-6. Add ORM generation after domain models and schemas are stable.
+1. Add end-to-end runtime tests for generated services against SQLite.
+2. Add Alembic migration generation.
+3. Add relationships and foreign keys between models.
+4. Add pagination and sorting for collection endpoints.
+5. Add a second target to validate the generator abstractions.

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import keyword
+from collections import Counter
+
 from microforge.domain.spec.errors import SpecSemanticError, SpecValidationErrors
 from microforge.domain.spec.models import ApiEndpoint, ModelSpec, SpecV1
 from microforge.domain.spec.types import ApiHttpMethod, FieldType, TargetFramework, TargetLanguage
@@ -34,6 +37,8 @@ def _validate_target_v1(spec: SpecV1) -> list[SpecSemanticError]:
 def _validate_model_rules(spec: SpecV1) -> list[SpecSemanticError]:
     """Run model-specific semantic checks."""
     errors: list[SpecSemanticError] = []
+    errors.extend(_validate_generated_names(spec))
+    errors.extend(_validate_unique_names(spec))
     model_fields = _index_model_fields(spec)
     errors.extend(_validate_endpoints_refer_existing_models(spec, model_fields))
     errors.extend(_validate_endpoint_filters_refer_existing_fields(spec, model_fields))
@@ -43,6 +48,121 @@ def _validate_model_rules(spec: SpecV1) -> list[SpecSemanticError]:
         errors.extend(_validate_generated_fields(model))
         errors.extend(_validate_field_metadata(model))
     return errors
+
+
+def _validate_generated_names(spec: SpecV1) -> list[SpecSemanticError]:
+    """Ensure user-provided names can safely become Python identifiers."""
+    errors: list[SpecSemanticError] = []
+    package_name = _python_name(spec.project_config.package_name)
+    if not _is_python_identifier(package_name):
+        errors.append(
+            SpecSemanticError(
+                f"Project packageName '{spec.project_config.package_name}' does not produce a "
+                "valid Python package identifier."
+            )
+        )
+    for model in spec.models:
+        if not _is_python_identifier(model.name):
+            errors.append(
+                SpecSemanticError(
+                    f"Model name '{model.name}' is not a valid Python identifier.",
+                    model=model.name,
+                )
+            )
+        for field in model.fields:
+            if not _is_python_identifier(field.name):
+                errors.append(
+                    SpecSemanticError(
+                        f"Field name '{field.name}' is not a valid Python identifier.",
+                        model=model.name,
+                    )
+                )
+        for query in model.queries:
+            if not _is_python_identifier(_python_name(query.name)):
+                errors.append(
+                    SpecSemanticError(
+                        f"Query name '{query.name}' does not produce a valid Python identifier.",
+                        model=model.name,
+                    )
+                )
+    for endpoint in spec.api.endpoints:
+        if not _is_python_identifier(_python_name(endpoint.name)):
+            errors.append(
+                SpecSemanticError(
+                    f"Endpoint name '{endpoint.name}' does not produce a valid Python identifier."
+                )
+            )
+    return errors
+
+
+def _validate_unique_names(spec: SpecV1) -> list[SpecSemanticError]:
+    """Reject duplicate names and names that collide after Python normalization."""
+    errors: list[SpecSemanticError] = []
+    errors.extend(_duplicate_errors("Model", [model.name for model in spec.models]))
+    errors.extend(_normalized_collision_errors("Model", [model.name for model in spec.models]))
+    errors.extend(_duplicate_errors("Endpoint", [endpoint.name for endpoint in spec.api.endpoints]))
+    errors.extend(
+        _normalized_collision_errors("Endpoint", [endpoint.name for endpoint in spec.api.endpoints])
+    )
+    for model in spec.models:
+        errors.extend(
+            _duplicate_errors("Field", [field.name for field in model.fields], model=model.name)
+        )
+        errors.extend(
+            _normalized_collision_errors(
+                "Field", [field.name for field in model.fields], model=model.name
+            )
+        )
+        errors.extend(
+            _duplicate_errors("Query", [query.name for query in model.queries], model=model.name)
+        )
+        errors.extend(
+            _normalized_collision_errors(
+                "Query", [query.name for query in model.queries], model=model.name
+            )
+        )
+    return errors
+
+
+def _duplicate_errors(
+    kind: str, names: list[str], *, model: str | None = None
+) -> list[SpecSemanticError]:
+    duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
+    return [
+        SpecSemanticError(f"{kind} name '{name}' is duplicated.", model=model)
+        for name in duplicates
+    ]
+
+
+def _normalized_collision_errors(
+    kind: str, names: list[str], *, model: str | None = None
+) -> list[SpecSemanticError]:
+    by_normalized: dict[str, set[str]] = {}
+    for name in names:
+        by_normalized.setdefault(_python_name(name), set()).add(name)
+    return [
+        SpecSemanticError(
+            f"{kind} names {sorted(originals)} collide after Python name normalization "
+            f"as '{normalized}'.",
+            model=model,
+        )
+        for normalized, originals in sorted(by_normalized.items())
+        if len(originals) > 1
+    ]
+
+
+def _python_name(value: str) -> str:
+    """Mirror the target's snake-case normalization without importing infrastructure."""
+    import re
+
+    value = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", value)
+    value = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", value)
+    value = re.sub(r"[^a-zA-Z0-9_]+", "_", value)
+    return value.strip("_").lower() or "model"
+
+
+def _is_python_identifier(value: str) -> bool:
+    return value.isidentifier() and not keyword.iskeyword(value)
 
 
 def _index_model_fields(spec: SpecV1) -> dict[str, set[str]]:
@@ -87,7 +207,7 @@ def _validate_endpoint_filters_refer_existing_fields(
         if endpoint.model is None:
             errors.append(
                 SpecSemanticError(
-                    f"Endpoint '{endpoint.name}' defines filters but does not " "declare a model.",
+                    f"Endpoint '{endpoint.name}' defines filters but does not declare a model.",
                 )
             )
             continue

@@ -140,6 +140,13 @@ Microforge validates model metadata before generation:
 - Endpoint `model` references must point to declared models.
 - Endpoint `filters` require `model`.
 - Endpoint `filters` must reference fields from the endpoint model.
+- `specVersion` must be `1`; unsupported versions are rejected.
+- Unknown properties are rejected instead of being silently ignored.
+- Package, model, field, query, and endpoint names must produce valid Python identifiers.
+- Python keywords such as `class`, `from`, and `def` cannot be used as identifiers.
+- Duplicate names and collisions after Python name normalization are rejected.
+
+The HTTP API accepts YAML specifications up to 1 MiB.
 
 ## Generated Examples
 

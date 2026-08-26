@@ -17,6 +17,7 @@ from microforge.infrastructure.inbound.api.v1.providers import (
 
 router = APIRouter()
 SUPPORTED_EXT = (".yaml", ".yml")
+MAX_SPEC_BYTES = 1024 * 1024
 
 
 @router.get("/health")
@@ -70,11 +71,20 @@ async def _read_yaml_upload(file: UploadFile) -> bytes:
             status_code=400,
             detail="Only .yaml/.yml files are accepted",
         )
-    return await file.read()
+    content = await file.read(MAX_SPEC_BYTES + 1)
+    if len(content) > MAX_SPEC_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Spec file exceeds the {MAX_SPEC_BYTES}-byte limit",
+        )
+    return content
 
 
 def _zip_filename(file: UploadFile) -> str:
-    filename = PurePath(file.filename or "microforge-project.yaml").name
+    raw_filename = (file.filename or "microforge-project.yaml").replace("\\", "/")
+    filename = PurePath(raw_filename).name
+    filename = "".join(character for character in filename if character >= " " and character != '"')
+    filename = filename or "microforge-project.yaml"
     lower_filename = filename.lower()
     if lower_filename.endswith(".yaml"):
         return f"{filename[:-5]}.zip"

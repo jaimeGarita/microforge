@@ -1,3 +1,5 @@
+import pytest
+
 from microforge.domain.spec.errors import SpecFormatError
 from microforge.infrastructure.outbound.spec.yaml_spec_loader import YamlSpecLoader
 
@@ -35,3 +37,16 @@ def test_load_bytes_rejects_invalid_structure() -> None:
         assert "Invalid spec structure" in str(exc)
     else:
         raise AssertionError("Expected SpecFormatError for invalid structure")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"specVersion: 2\n",
+        b"specVersion: 1\nunexpected: true\n",
+        b"specVersion: 1\nmodels:\n  - name: User\n    fields:\n      - name: id\n        type: int\n        primariKey: true\n",
+    ],
+)
+def test_load_bytes_rejects_unsupported_versions_and_unknown_fields(payload: bytes) -> None:
+    with pytest.raises(SpecFormatError, match="Invalid spec structure"):
+        YamlSpecLoader().load_bytes(payload)

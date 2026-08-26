@@ -312,7 +312,48 @@ def test_validate_semantics_rejects_filters_on_non_collection_get_endpoints() ->
 
     assert exc_info.value.errors[0].to_dict() == {
         "message": (
-            "Endpoint 'getOrderById' defines filters but is not a collection " "GET endpoint."
+            "Endpoint 'getOrderById' defines filters but is not a collection GET endpoint."
         ),
         "model": "Order",
     }
+
+
+def test_validate_semantics_rejects_names_that_generate_invalid_python() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "project": {"packageName": "123-service"},
+            "models": [{"name": "class", "fields": [{"name": "from", "type": "string"}]}],
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    messages = [error.raw_message for error in exc_info.value.errors]
+    assert any("packageName" in message for message in messages)
+    assert any("Model name 'class'" in message for message in messages)
+    assert any("Field name 'from'" in message for message in messages)
+
+
+def test_validate_semantics_rejects_duplicates_and_normalized_collisions() -> None:
+    spec = SpecV1.model_validate(
+        {
+            "models": [
+                {
+                    "name": "User",
+                    "fields": [
+                        {"name": "user_id", "type": "int"},
+                        {"name": "user_id", "type": "int"},
+                    ],
+                },
+                {"name": "user", "fields": [{"name": "id", "type": "int"}]},
+            ]
+        }
+    )
+
+    with pytest.raises(SpecValidationErrors) as exc_info:
+        validate_semantics(spec)
+
+    messages = [error.raw_message for error in exc_info.value.errors]
+    assert "Field name 'user_id' is duplicated." in messages
+    assert any("Model names ['User', 'user'] collide" in message for message in messages)

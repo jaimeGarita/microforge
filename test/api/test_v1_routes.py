@@ -44,6 +44,29 @@ def test_validate_rejects_invalid_extension() -> None:
     assert response.json()["detail"] == "Only .yaml/.yml files are accepted"
 
 
+def test_validate_rejects_oversized_upload() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/validate",
+        files={"file": ("large.yaml", b" " * (1024 * 1024 + 1), "application/yaml")},
+    )
+    assert response.status_code == 413
+    assert "exceeds" in response.json()["detail"]
+
+
+def test_generate_sanitizes_download_filename() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/generate",
+        files={
+            "file": ('bad"name.yaml', _read_bytes("examples/spec_valid.yaml"), "application/yaml")
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-disposition"] == 'attachment; filename="bad%22name.zip"'
+    assert response.headers["content-disposition"].count('"') == 2
+
+
 def test_validate_returns_all_semantic_errors() -> None:
     client = TestClient(app)
     response = client.post(

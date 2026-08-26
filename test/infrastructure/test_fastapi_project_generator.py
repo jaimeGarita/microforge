@@ -18,7 +18,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
 
     repository_port_path = (
-        "src/orders_service/infrastructure/persistence/repositories/" "order_repository.py"
+        "src/orders_service/infrastructure/persistence/repositories/order_repository.py"
     )
     main_path = "src/orders_service/main.py"
 
@@ -113,8 +113,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "records = find_orders_by_status_use_case.execute(status)" in routes
     assert "records = use_case.execute()" in routes
     assert (
-        "from orders_service.infrastructure.inbound.api.mappers.order_mapper "
-        "import OrderApiMapper"
+        "from orders_service.infrastructure.inbound.api.mappers.order_mapper import OrderApiMapper"
     ) in routes
     assert "return OrderApiMapper.to_read_list(records)" in routes
 
@@ -195,3 +194,12 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "orders: Sequence[Order]," in mapper
     assert "return [cls.to_domain(record) for record in records]" in mapper
     assert "return [cls.to_orm(order) for order in orders]" in mapper
+
+
+def test_all_generated_python_files_compile() -> None:
+    spec = _load_spec("examples/spec_large.yaml")
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
+
+    for project_file in files:
+        if project_file.path.endswith(".py"):
+            compile(project_file.content, project_file.path, "exec")

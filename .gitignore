@@ -3,7 +3,6 @@
 /.ruff_cache
 /.venv
 /.vscode
-/uv.lock
 .coverage
 htmlcov/
 *.pyc

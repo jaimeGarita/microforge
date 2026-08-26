@@ -25,3 +25,13 @@ def test_zip_project_packager_rejects_unsafe_paths() -> None:
 
     with pytest.raises(ValueError, match="Unsafe generated file path"):
         ZipProjectPackager().package(files)
+
+
+def test_zip_project_packager_rejects_duplicate_paths() -> None:
+    files = [
+        ProjectFile(path="README.md", content=b"one"),
+        ProjectFile(path="README.md", content=b"two"),
+    ]
+
+    with pytest.raises(ValueError, match="Duplicate generated file paths"):
+        ZipProjectPackager().package(files)

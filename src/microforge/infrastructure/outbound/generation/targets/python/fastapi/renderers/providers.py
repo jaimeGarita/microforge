@@ -107,7 +107,7 @@ def _providers_for_spec(spec: SpecV1) -> list[ProviderContext]:
                     function_name=f"provide_{use_case.filename}_use_case",
                     import_class_name=use_case.class_name,
                     import_module=(
-                        f"application.use_cases.{to_snake_case(model.name)}." f"{use_case.filename}"
+                        f"application.use_cases.{to_snake_case(model.name)}.{use_case.filename}"
                     ),
                     repository_class_name=f"SqlAlchemy{model.name}Repository",
                     repository_module=(
@@ -131,7 +131,7 @@ def _providers_for_spec(spec: SpecV1) -> list[ProviderContext]:
                     function_name=f"provide_{use_case.filename}_use_case",
                     import_class_name=use_case.class_name,
                     import_module=(
-                        f"application.use_cases.{to_snake_case(model.name)}." f"{use_case.filename}"
+                        f"application.use_cases.{to_snake_case(model.name)}.{use_case.filename}"
                     ),
                     repository_class_name=f"SqlAlchemy{model.name}Repository",
                     repository_module=(
