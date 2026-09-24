@@ -50,10 +50,10 @@ def {{ route.function_name }}(
 {% if route.body_schema_class %}
     payload: {{ route.body_schema_class }},
 {% endif %}
-{% for query_route in route.query_routes %}
-{% for query_param in query_route.params %}
+{% for query_param in route.query_params %}
     {{ query_param.name }}: {{ query_param.python_type }} | None = Query(default=None),
 {% endfor %}
+{% for query_route in route.query_routes %}
     {{ query_route.use_case.filename }}_use_case: {{ query_route.use_case.class_name }} = Depends({{ query_route.provider_name }}),
 {% endfor %}
     use_case: {{ route.use_case.class_name }} = Depends({{ route.provider_name }}),

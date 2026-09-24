@@ -95,7 +95,7 @@ def use_case_for_method(model: ModelSpec, method: RepositoryMethodContext) -> Us
         filename=_use_case_filename(model, method),
         params=method.params,
         repository_method_name=method.name,
-        repository_param_names=_param_names(method.params),
+        repository_param_names=", ".join(parameter.name for parameter in method.parameters),
         return_type=method.return_type,
         imports=method.imports,
     )
@@ -138,12 +138,6 @@ def _use_case_filename(model: ModelSpec, method: RepositoryMethodContext) -> str
 
 def _pascal_case(value: str) -> str:
     return "".join(part.capitalize() for part in to_snake_case(value).split("_"))
-
-
-def _param_names(params: str) -> str:
-    if not params:
-        return ""
-    return ", ".join(param.split(":", maxsplit=1)[0].strip() for param in params.split(","))
 
 
 def _encode(content: str) -> bytes:

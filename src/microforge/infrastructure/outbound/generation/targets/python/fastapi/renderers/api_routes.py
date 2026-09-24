@@ -56,6 +56,7 @@ class RouteContext:
     domain_module: str
     id_imports: list[str]
     id_type: str
+    query_params: list[QueryParamContext]
     query_routes: list[QueryRouteContext]
 
 
@@ -237,6 +238,7 @@ def _routes_for_model(
                 domain_module=to_snake_case(model.name),
                 id_imports=imports_for_fields([id_field]) if id_field is not None else [],
                 id_type=id_type,
+                query_params=_unique_query_params(query_routes),
                 query_routes=query_routes,
             )
         )
@@ -248,9 +250,14 @@ def _query_routes_for_model(
     endpoints: list[ApiEndpoint],
 ) -> list[QueryRouteContext]:
     query_routes = []
+    seen_parameter_sets: set[tuple[str, ...]] = set()
     for method in repository_methods_for(model, endpoints):
         if not method.filters:
             continue
+        parameter_set = tuple(parameter.name for parameter in method.parameters)
+        if parameter_set in seen_parameter_sets:
+            continue
+        seen_parameter_sets.add(parameter_set)
         use_case = use_case_for_method(model, method)
         params = _query_params_for_method(method)
         param_names = [param.name for param in params]
@@ -267,15 +274,27 @@ def _query_routes_for_model(
 
 
 def _query_params_for_method(method: RepositoryMethodContext) -> list[QueryParamContext]:
-    if not method.params:
-        return []
     return [
         QueryParamContext(
-            name=param.split(":", maxsplit=1)[0].strip(),
-            python_type=param.split(":", maxsplit=1)[1].strip(),
+            name=parameter.name,
+            python_type=parameter.python_type,
         )
-        for param in method.params.split(",")
+        for parameter in method.parameters
     ]
+
+
+def _unique_query_params(query_routes: list[QueryRouteContext]) -> list[QueryParamContext]:
+    params_by_name: dict[str, QueryParamContext] = {}
+    for query_route in query_routes:
+        for param in query_route.params:
+            existing = params_by_name.get(param.name)
+            if existing is not None and existing.python_type != param.python_type:
+                raise ValueError(
+                    f"Query parameter '{param.name}' has incompatible generated types: "
+                    f"'{existing.python_type}' and '{param.python_type}'."
+                )
+            params_by_name.setdefault(param.name, param)
+    return list(params_by_name.values())
 
 
 def _import_lines_for_routes(routes: list[RouteContext]) -> list[str]:

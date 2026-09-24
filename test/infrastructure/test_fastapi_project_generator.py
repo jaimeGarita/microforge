@@ -3,6 +3,7 @@ import pathlib
 import yaml
 
 from microforge.domain.spec.models import SpecV1
+from microforge.domain.spec.semantics import validate_semantics
 from microforge.infrastructure.outbound.generation.targets.python.fastapi import (
     generator as fastapi_generator,
 )
@@ -211,3 +212,32 @@ def test_all_generated_python_files_compile() -> None:
     for project_file in files:
         if project_file.path.endswith(".py"):
             compile(project_file.content, project_file.path, "exec")
+
+
+def test_comprehensive_spec_generates_compilable_python() -> None:
+    spec = _load_spec("examples/spec_comprehensive.yaml")
+    validate_semantics(spec)
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
+    by_path = {file.path: file.content.decode("utf-8") for file in files}
+
+    for project_file in files:
+        if project_file.path.endswith(".py"):
+            compile(project_file.content, project_file.path, "exec")
+
+    product_routes = by_path[
+        "src/marketplace_service/infrastructure/inbound/api/routes/product_routes.py"
+    ]
+    assert "status_in: list[Literal['draft', 'active', 'archived']] | None" in product_routes
+    assert product_routes.count("status_in: list[Literal") == 1
+
+    customer_routes = by_path[
+        "src/marketplace_service/infrastructure/inbound/api/routes/customer_routes.py"
+    ]
+    assert customer_routes.count("email: str | None = Query(default=None)") == 1
+
+    order_routes = by_path[
+        "src/marketplace_service/infrastructure/inbound/api/routes/order_routes.py"
+    ]
+    assert "placed_at_gte: datetime | None = Query(default=None)" in order_routes
+    assert "placed_at_lte: datetime | None = Query(default=None)" in order_routes
+    assert "placed_at_gte, placed_at_lte" in order_routes

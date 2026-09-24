@@ -27,14 +27,31 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 
 
 @dataclass(frozen=True)
+class RepositoryParameterContext:
+    """A typed repository method parameter."""
+
+    name: str
+    python_type: str
+
+    @property
+    def signature(self) -> str:
+        return f"{self.name}: {self.python_type}"
+
+
+@dataclass(frozen=True)
 class RepositoryMethodContext:
     """Repository method data prepared for repository templates."""
 
     name: str
-    params: str
+    parameters: list[RepositoryParameterContext]
     return_type: str
     filters: list[RepositoryFilterContext]
     imports: list[str]
+
+    @property
+    def params(self) -> str:
+        """Return the rendered Python parameter signature."""
+        return ", ".join(parameter.signature for parameter in self.parameters)
 
 
 def repository_methods_for(
@@ -85,41 +102,41 @@ def repository_method_for_endpoint(
     id_imports = imports_for_fields([id_field]) if id_field is not None else []
     if action == EndpointAction.get:
         return RepositoryMethodContext(
-            "find_by_id",
-            f"id: {id_type}",
-            f"{model.name} | None",
+            name="find_by_id",
+            parameters=[RepositoryParameterContext("id", id_type)],
+            return_type=f"{model.name} | None",
             filters=[],
             imports=id_imports,
         )
     if action == EndpointAction.list:
         return RepositoryMethodContext(
-            "find_all",
-            "",
-            f"list[{model.name}]",
+            name="find_all",
+            parameters=[],
+            return_type=f"list[{model.name}]",
             filters=[],
             imports=[],
         )
     if action == EndpointAction.create:
         return RepositoryMethodContext(
-            "save",
-            f"{to_snake_case(model.name)}: {model.name}",
-            model.name,
+            name="save",
+            parameters=[RepositoryParameterContext(to_snake_case(model.name), model.name)],
+            return_type=model.name,
             filters=[],
             imports=[],
         )
     if action == EndpointAction.update:
         return RepositoryMethodContext(
-            "update",
-            f"{to_snake_case(model.name)}: {model.name}",
-            model.name,
+            name="update",
+            parameters=[RepositoryParameterContext(to_snake_case(model.name), model.name)],
+            return_type=model.name,
             filters=[],
             imports=[],
         )
     if action == EndpointAction.delete:
         return RepositoryMethodContext(
-            "delete_by_id",
-            f"id: {id_type}",
-            "None",
+            name="delete_by_id",
+            parameters=[RepositoryParameterContext("id", id_type)],
+            return_type="None",
             filters=[],
             imports=id_imports,
         )
@@ -155,13 +172,16 @@ def _method_for_filter_params(
     name: str | None = None,
 ) -> RepositoryMethodContext:
     fields = [_field_for_query_param(model, param) for param in params]
-    method_params = ", ".join(
-        f"{_query_param_name(param)}: {_query_param_type(param, field)}"
+    method_parameters = [
+        RepositoryParameterContext(
+            name=_query_param_name(param),
+            python_type=_query_param_type(param, field),
+        )
         for param, field in zip(params, fields, strict=True)
-    )
+    ]
     return RepositoryMethodContext(
         name=_query_method_name(name or _query_name_for_params(params)),
-        params=method_params,
+        parameters=method_parameters,
         return_type=f"list[{model.name}]",
         filters=[
             RepositoryFilterContext(

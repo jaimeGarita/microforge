@@ -1,0 +1,369 @@
+specVersion: 1
+project:
+  name: marketplace-service
+  packageName: marketplace_service
+target:
+  language: python
+  framework: fastapi
+  pythonVersion: "3.12"
+  packaging: poetry
+service:
+  name: marketplace
+  description: Comprehensive Microforge specification for integration and generation tests
+api:
+  basePath: /api/v1
+  endpoints:
+    - name: listCustomers
+      model: Customer
+      path: /customers
+      method: GET
+      filters:
+        - field: email
+          op: eq
+        - field: active
+          op: eq
+        - field: created_at
+          op: gte
+    - name: getCustomerById
+      model: Customer
+      path: /customers/{id}
+      method: GET
+    - name: createCustomer
+      model: Customer
+      path: /customers
+      method: POST
+    - name: updateCustomer
+      model: Customer
+      path: /customers/{id}
+      method: PATCH
+    - name: deleteCustomer
+      model: Customer
+      path: /customers/{id}
+      method: DELETE
+
+    - name: listCategories
+      model: Category
+      path: /categories
+      method: GET
+      filters:
+        - field: slug
+          op: eq
+        - field: name
+          op: startswith
+    - name: createCategory
+      model: Category
+      path: /categories
+      method: POST
+
+    - name: listProducts
+      model: Product
+      path: /products
+      method: GET
+      filters:
+        - field: category_id
+          op: eq
+        - field: name
+          op: contains
+        - field: price
+          op: lte
+        - field: stock
+          op: gt
+        - field: status
+          op: in
+    - name: getProductById
+      model: Product
+      path: /products/{id}
+      method: GET
+    - name: createProduct
+      model: Product
+      path: /products
+      method: POST
+    - name: updateProduct
+      model: Product
+      path: /products/{id}
+      method: PUT
+    - name: deleteProduct
+      model: Product
+      path: /products/{id}
+      method: DELETE
+
+    - name: listOrders
+      model: Order
+      path: /orders
+      method: GET
+      filters:
+        - field: customer_id
+          op: eq
+        - field: status
+          op: in
+        - field: total_amount
+          op: gte
+        - field: placed_at
+          op: lte
+    - name: getOrderById
+      model: Order
+      path: /orders/{id}
+      method: GET
+    - name: createOrder
+      model: Order
+      path: /orders
+      method: POST
+    - name: updateOrder
+      model: Order
+      path: /orders/{id}
+      method: PATCH
+    - name: deleteOrder
+      model: Order
+      path: /orders/{id}
+      method: DELETE
+
+    - name: listOrderItems
+      model: OrderItem
+      path: /order-items
+      method: GET
+      filters:
+        - field: order_id
+          op: eq
+        - field: product_id
+          op: eq
+        - field: quantity
+          op: gte
+    - name: createOrderItem
+      model: OrderItem
+      path: /order-items
+      method: POST
+
+models:
+  - name: Customer
+    fields:
+      - name: id
+        type: uuid
+        primaryKey: true
+      - name: email
+        type: string
+        unique: true
+        index: true
+        minLength: 5
+        maxLength: 254
+      - name: display_name
+        type: string
+        minLength: 2
+        maxLength: 100
+      - name: birth_date
+        type: date
+        nullable: true
+      - name: active
+        type: boolean
+        default: true
+        index: true
+      - name: created_at
+        type: instant
+        index: true
+    queries:
+      - name: by_email
+        params:
+          - field: email
+            op: eq
+      - name: active_created_since
+        params:
+          - field: active
+            op: eq
+          - field: created_at
+            op: gte
+    features:
+      repository: true
+
+  - name: Category
+    fields:
+      - name: id
+        type: int
+        primaryKey: true
+        autoIncrement: true
+      - name: slug
+        type: string
+        unique: true
+        index: true
+        minLength: 2
+        maxLength: 80
+      - name: name
+        type: string
+        minLength: 2
+        maxLength: 120
+      - name: description
+        type: string
+        nullable: true
+        maxLength: 500
+    queries:
+      - name: by_slug
+        params:
+          - field: slug
+            op: eq
+    features:
+      repository: true
+
+  - name: Product
+    fields:
+      - name: id
+        type: uuid
+        primaryKey: true
+      - name: category_id
+        type: int
+        index: true
+      - name: sku
+        type: string
+        unique: true
+        index: true
+        minLength: 3
+        maxLength: 40
+      - name: name
+        type: string
+        minLength: 2
+        maxLength: 160
+      - name: description
+        type: string
+        nullable: true
+        maxLength: 1000
+      - name: price
+        type: decimal
+        minimum: 0
+      - name: stock
+        type: long
+        minimum: 0
+        default: 0
+      - name: status
+        type: string
+        enum:
+          - draft
+          - active
+          - archived
+        default: draft
+        index: true
+      - name: available
+        type: boolean
+        default: true
+    relations:
+      - name: category
+        type: manyToOne
+        target: Category
+        localField: category_id
+        targetField: id
+    queries:
+      - name: by_sku
+        params:
+          - field: sku
+            op: eq
+      - name: available_by_category
+        params:
+          - field: category_id
+            op: eq
+          - field: available
+            op: eq
+      - name: search_by_name
+        params:
+          - field: name
+            op: contains
+    features:
+      repository: true
+
+  - name: Order
+    fields:
+      - name: id
+        type: long
+        primaryKey: true
+        autoIncrement: true
+      - name: customer_id
+        type: uuid
+        index: true
+      - name: external_reference
+        type: string
+        unique: true
+        maxLength: 64
+      - name: status
+        type: string
+        enum:
+          - pending
+          - paid
+          - shipped
+          - cancelled
+        default: pending
+        index: true
+      - name: total_amount
+        type: decimal
+        minimum: 0
+      - name: placed_at
+        type: instant
+        index: true
+      - name: notes
+        type: string
+        nullable: true
+        maxLength: 1000
+    relations:
+      - name: customer
+        type: manyToOne
+        target: Customer
+        localField: customer_id
+        targetField: id
+    queries:
+      - name: by_external_reference
+        params:
+          - field: external_reference
+            op: eq
+      - name: customer_orders_by_status
+        params:
+          - field: customer_id
+            op: eq
+          - field: status
+            op: in
+      - name: placed_between
+        params:
+          - field: placed_at
+            op: gte
+          - field: placed_at
+            op: lte
+    features:
+      repository: true
+
+  - name: OrderItem
+    fields:
+      - name: id
+        type: int
+        primaryKey: true
+        autoIncrement: true
+      - name: order_id
+        type: long
+        index: true
+      - name: product_id
+        type: uuid
+        index: true
+      - name: quantity
+        type: int
+        minimum: 1
+      - name: unit_price
+        type: decimal
+        minimum: 0
+      - name: discount_amount
+        type: decimal
+        minimum: 0
+        default: "0.0"
+    relations:
+      - name: order
+        type: manyToOne
+        target: Order
+        localField: order_id
+        targetField: id
+      - name: product
+        type: manyToOne
+        target: Product
+        localField: product_id
+        targetField: id
+    queries:
+      - name: by_order
+        params:
+          - field: order_id
+            op: eq
+      - name: by_product
+        params:
+          - field: product_id
+            op: eq
+    features:
+      repository: true
