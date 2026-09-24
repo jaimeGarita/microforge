@@ -171,6 +171,12 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "status: Mapped[str] = mapped_column()"
         in by_path["src/orders_service/infrastructure/persistence/order.py"]
     )
+    order_orm = by_path["src/orders_service/infrastructure/persistence/order.py"]
+    assert "from sqlalchemy import ForeignKey" in order_orm
+    assert (
+        "parent_order_id: Mapped[UUID | None] = mapped_column("
+        'ForeignKey("orders.id"), nullable=True)'
+    ) in order_orm
     repository = by_path[
         "src/orders_service/infrastructure/persistence/repositories/order_repository.py"
     ]

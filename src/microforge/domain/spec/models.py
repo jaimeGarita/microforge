@@ -9,6 +9,7 @@ from microforge.domain.spec.types import (
     FieldType,
     Packaging,
     QueryOp,
+    RelationType,
     TargetFramework,
     TargetLanguage,
 )
@@ -91,6 +92,16 @@ class FieldSpec(SpecModel):
     unique: bool = False
 
 
+class RelationSpec(SpecModel):
+    """Relation definition for a model."""
+
+    name: str
+    relation_type: RelationType = Field(alias="type")
+    target: str
+    local_field: str = Field(alias="localField")
+    target_field: str = Field(alias="targetField")
+
+
 class QuerySpec(SpecModel):
     """Query definition for a model."""
 
@@ -105,6 +116,7 @@ class ModelSpec(SpecModel):
     fields: list[FieldSpec]
     queries: list[QuerySpec] = Field(default_factory=list)
     features: FeatureConfig = Field(default_factory=FeatureConfig)
+    relations: list[RelationSpec] = Field(default_factory=list)
 
 
 class SpecV1(SpecModel):

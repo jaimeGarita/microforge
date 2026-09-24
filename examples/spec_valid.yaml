@@ -24,6 +24,15 @@ models:
         primaryKey: true
       - name: status
         type: string
+      - name: parent_order_id
+        type: uuid
+        nullable: true
+    relations:
+      - name: parent_order
+        type: manyToOne
+        target: Order
+        localField: parent_order_id
+        targetField: id
     queries:
       - name: by_status
         params:

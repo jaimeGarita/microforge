@@ -1,6 +1,9 @@
 {% for import_line in imports %}
 {{ import_line }}
 {% endfor %}
+{% if has_foreign_keys %}
+from sqlalchemy import ForeignKey
+{% endif %}
 from sqlalchemy.orm import Mapped, mapped_column
 
 from {{ package_name }}.infrastructure.persistence.base import Base

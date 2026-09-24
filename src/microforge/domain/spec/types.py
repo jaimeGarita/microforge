@@ -59,3 +59,9 @@ class ApiHttpMethod(str, Enum):
     put = "PUT"
     patch = "PATCH"
     delete = "DELETE"
+
+
+class RelationType(str, Enum):
+    """Supported relation types."""
+
+    many_to_one = "manyToOne"

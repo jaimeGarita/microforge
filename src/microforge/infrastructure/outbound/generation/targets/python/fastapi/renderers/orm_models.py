@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
-from microforge.domain.spec.models import FieldSpec, ModelSpec, SpecV1
+from microforge.domain.spec.models import FieldSpec, ModelSpec, RelationSpec, SpecV1
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.field_metadata import (
     field_has_default,
     sqlalchemy_default_expression_for,
@@ -74,11 +74,16 @@ class OrmModelsRenderer:
         return files
 
     def _render_model(self, model: ModelSpec, package_name: str) -> str:
+        relations_by_local_field = {relation.local_field: relation for relation in model.relations}
         return self.renderer.render(
             "infrastructure/persistence/model.py.j2",
             {
                 "class_name": model.name,
-                "fields": [_field_context(field) for field in model.fields],
+                "fields": [
+                    _field_context(field, relations_by_local_field.get(field.name))
+                    for field in model.fields
+                ],
+                "has_foreign_keys": bool(model.relations),
                 "imports": imports_for_model(model),
                 "package_name": package_name,
                 "table_name": table_name_for(model.name),
@@ -86,16 +91,19 @@ class OrmModelsRenderer:
         )
 
 
-def _field_context(field: FieldSpec) -> OrmFieldContext:
+def _field_context(field: FieldSpec, relation: RelationSpec | None = None) -> OrmFieldContext:
     return OrmFieldContext(
         name=field.name,
         python_type=_orm_python_type_for(field),
-        column_args=_column_args_for(field),
+        column_args=_column_args_for(field, relation),
     )
 
 
-def _column_args_for(field: FieldSpec) -> str:
+def _column_args_for(field: FieldSpec, relation: RelationSpec | None = None) -> str:
     args: list[str] = []
+    if relation is not None:
+        target_table = table_name_for(relation.target)
+        args.append(f'ForeignKey("{target_table}.{relation.target_field}")')
     if field.primary_key:
         args.append("primary_key=True")
     if field.auto_increment:

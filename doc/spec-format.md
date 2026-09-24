@@ -78,6 +78,49 @@ find_by_email_and_created_at_gte(...)
 | `startswith` | Starts with |
 | `endswith` | Ends with |
 
+## Model Relations
+
+The current relation support is intentionally limited to `manyToOne`. The local field must be
+declared explicitly on the source model and must have the same type as the referenced field.
+
+```yaml
+models:
+  - name: Customer
+    fields:
+      - name: id
+        type: int
+        primaryKey: true
+
+  - name: Order
+    fields:
+      - name: id
+        type: int
+        primaryKey: true
+      - name: customer_id
+        type: int
+    relations:
+      - name: customer
+        type: manyToOne
+        target: Customer
+        localField: customer_id
+        targetField: id
+```
+
+This generates a SQLAlchemy foreign key equivalent to:
+
+```python
+customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+```
+
+Relation rules:
+
+- `target` must reference an existing model.
+- `localField` must exist on the model declaring the relation.
+- `targetField` must exist on the target model and be a primary key or unique.
+- Local and target fields must have the same Microforge field type.
+- A local field cannot be auto-incremented or reused by multiple relations.
+- Navigation properties and inverse relations are not generated yet.
+
 ## Field Metadata
 
 Each model field supports structural metadata:
