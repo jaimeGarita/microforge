@@ -1,0 +1,183 @@
+# Microforge specification v1 — catalogue of every currently supported option.
+# Mutually exclusive values are documented next to the selected value.
+# Defaults when omitted:
+#   project.name/packageName=microforge
+#   target=python + fastapi + Python 3.12 + poetry
+#   service.name=microforge, api.basePath=/api/v1
+#   endpoint.method=GET, query op=eq, features.repository=true
+specVersion: 1
+
+project:
+  name: all-features-service
+  packageName: all_features_service
+
+target:
+  language: python       # v1: python
+  framework: fastapi     # v1: fastapi
+  pythonVersion: "3.12"
+  packaging: pip         # pip | poetry
+
+service:
+  name: all-features
+  description: Every option supported by the Microforge v1 specification
+
+api:
+  basePath: /api/v1
+  endpoints:
+    # Every filter operator supported by endpoint filters and model queries.
+    - name: listProducts
+      model: Product
+      path: /products
+      method: GET
+      filters:
+        - {field: sku, op: eq}
+        - {field: sku, op: ne}
+        - {field: price, op: lt}
+        - {field: price, op: lte}
+        - {field: price, op: gt}
+        - {field: price, op: gte}
+        - {field: name, op: like}
+        - {field: name, op: not_like}
+        - {field: status, op: in}
+        - {field: status, op: not_in}
+        - {field: name, op: contains}
+        - {field: name, op: startswith}
+        - {field: name, op: endswith}
+    - name: getProductById
+      model: Product
+      path: /products/{id}
+      method: GET
+    - name: createProduct
+      model: Product
+      path: /products
+      method: POST
+    - name: replaceProduct
+      model: Product
+      path: /products/{id}
+      method: PUT
+    - name: updateProduct
+      model: Product
+      path: /products/{id}
+      method: PATCH
+    - name: deleteProduct
+      model: Product
+      path: /products/{id}
+      method: DELETE
+
+models:
+  - name: Category
+    fields:
+      - name: id
+        type: int
+        primaryKey: true
+        autoIncrement: true
+      - name: slug
+        type: string
+        unique: true
+        index: true
+        minLength: 2
+        maxLength: 80
+      - name: visible
+        type: boolean
+        default: true
+    queries:
+      - name: by_slug
+        params:
+          - {field: slug, op: eq}
+    features:
+      repository: true
+
+  - name: Product
+    fields:
+      # All field types: string, int, long, boolean, uuid, decimal, instant, date.
+      - name: id
+        type: uuid
+        primaryKey: true
+      - name: category_id
+        type: int
+        index: true
+      - name: sku
+        type: string
+        unique: true
+        index: true
+        minLength: 3
+        maxLength: 40
+      - name: name
+        type: string
+        minLength: 2
+        maxLength: 160
+      - name: description
+        type: string
+        nullable: true
+        default: null
+        maxLength: 1000
+      - name: stock
+        type: long
+        minimum: 0
+        maximum: 1000000
+        default: 0
+      - name: featured
+        type: boolean
+        default: false
+      - name: price
+        type: decimal
+        minimum: 0
+        maximum: 999999.99
+        default: "0.0"
+      - name: status
+        type: string
+        enum: [draft, active, archived]
+        default: draft
+        index: true
+      - name: published_at
+        type: instant
+        nullable: true
+      - name: available_on
+        type: date
+        nullable: true
+    relations:
+      - name: category
+        type: manyToOne     # v1: manyToOne
+        target: Category
+        localField: category_id
+        targetField: id
+    queries:
+      - name: by_category_and_status
+        params:
+          - {field: category_id, op: eq}
+          - {field: status, op: in}
+      - name: price_range
+        params:
+          - {field: price, op: gte}
+          - {field: price, op: lte}
+      - name: search_name
+        params:
+          - {field: name, op: contains}
+    features:
+      repository: true
+
+  - name: SequenceExample
+    fields:
+      - name: id
+        type: long
+        primaryKey: true
+        autoIncrement: true
+      - name: label
+        type: string
+    features:
+      repository: true
+
+  # A model can explicitly opt out of repository generation if it has no queries.
+  - name: DomainOnlyValue
+    fields:
+      - name: code
+        type: string
+        primaryKey: true
+    features:
+      repository: false
+
+  # Only name and fields are required; queries, relations and features have defaults.
+  - name: MinimalModel
+    fields:
+      - name: id
+        type: uuid

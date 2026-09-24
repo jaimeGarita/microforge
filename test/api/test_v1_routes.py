@@ -37,6 +37,22 @@ def test_validate_accepts_valid_yaml() -> None:
     assert response.json() == {"ok": True}
 
 
+def test_validate_accepts_all_supported_features_example() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/spec/validate",
+        files={
+            "file": (
+                "spec_all_features.yaml",
+                _read_bytes("examples/spec_all_features.yaml"),
+                "application/yaml",
+            )
+        },
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+
+
 def test_validate_rejects_invalid_extension() -> None:
     client = TestClient(app)
     response = client.post(
@@ -44,7 +60,11 @@ def test_validate_rejects_invalid_extension() -> None:
         files={"file": ("spec.txt", b"specVersion: 1", "text/plain")},
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Only .yaml/.yml files are accepted"
+    assert response.json()["detail"] == {
+        "code": "unsupported_file_type",
+        "message": "Only .yaml/.yml files are accepted.",
+        "errors": [],
+    }
 
 
 def test_validate_rejects_oversized_upload() -> None:
@@ -54,7 +74,8 @@ def test_validate_rejects_oversized_upload() -> None:
         files={"file": ("large.yaml", b" " * (1024 * 1024 + 1), "application/yaml")},
     )
     assert response.status_code == 413
-    assert "exceeds" in response.json()["detail"]
+    assert response.json()["detail"]["code"] == "spec_too_large"
+    assert "exceeds" in response.json()["detail"]["message"]
 
 
 def test_generate_sanitizes_download_filename() -> None:
@@ -84,9 +105,10 @@ def test_validate_returns_all_semantic_errors() -> None:
     )
     assert response.status_code == 400
     detail = response.json()["detail"]
-    assert isinstance(detail, list)
-    assert len(detail) == 2
-    assert all(item["model"] == "Order" for item in detail)
+    assert detail["code"] == "invalid_spec_semantics"
+    assert len(detail["errors"]) == 2
+    assert all(item["model"] == "Order" for item in detail["errors"])
+    assert all(item["code"] == "semantic_error" for item in detail["errors"])
 
 
 def test_validate_rejects_invalid_structure() -> None:
@@ -96,7 +118,10 @@ def test_validate_rejects_invalid_structure() -> None:
         files={"file": ("empty.yaml", b"[]", "application/yaml")},
     )
     assert response.status_code == 400
-    assert "Invalid spec structure" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["code"] == "invalid_spec_structure"
+    assert detail["message"] == "The specification structure is invalid."
+    assert detail["errors"][0]["path"] == "$"
 
 
 def test_generate_project_returns_zip() -> None:
@@ -181,5 +206,5 @@ def test_generate_project_returns_semantic_errors() -> None:
 
     assert response.status_code == 400
     detail = response.json()["detail"]
-    assert isinstance(detail, list)
-    assert len(detail) == 2
+    assert detail["code"] == "invalid_spec_semantics"
+    assert len(detail["errors"]) == 2

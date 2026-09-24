@@ -87,6 +87,28 @@ For the full YAML field metadata reference, see
 
 ## API
 
+Validation and generation failures use the same machine-readable envelope:
+
+```json
+{
+  "detail": {
+    "code": "invalid_spec_structure",
+    "message": "The specification structure is invalid.",
+    "errors": [
+      {
+        "code": "invalid_enum_value",
+        "message": "Input should be 'string', 'int', ...",
+        "path": "models[0].fields[0].type"
+      }
+    ]
+  }
+}
+```
+
+`detail.code` identifies the error category. Individual entries in `errors` provide
+a stable code and, when available, the exact location in the uploaded document.
+Clients should branch on `code`; `message` is intended for display and diagnostics.
+
 ### Health
 
 ```http

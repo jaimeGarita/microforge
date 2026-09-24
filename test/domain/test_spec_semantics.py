@@ -70,6 +70,7 @@ def test_validate_semantics_flattens_generated_field_errors() -> None:
     errors = exc_info.value.errors
     assert len(errors) == 1
     assert errors[0].to_dict() == {
+        "code": "semantic_error",
         "message": "Field 'id' is auto_increment but not primary_key.",
         "model": "Order",
     }
@@ -110,6 +111,7 @@ def test_validate_semantics_rejects_non_numeric_auto_increment() -> None:
     errors = exc_info.value.errors
     assert len(errors) == 1
     assert errors[0].to_dict() == {
+        "code": "semantic_error",
         "message": (
             "Field 'code' is auto_increment but type 'string' is not "
             "autoincrementable. Only int and long are supported."
@@ -184,6 +186,7 @@ def test_validate_semantics_rejects_nullable_primary_key() -> None:
         validate_semantics(spec)
 
     assert exc_info.value.errors[0].to_dict() == {
+        "code": "semantic_error",
         "message": "Field 'id' is primary_key but nullable.",
         "model": "Order",
     }
@@ -263,6 +266,7 @@ def test_validate_semantics_rejects_endpoint_filters_for_missing_fields() -> Non
         validate_semantics(spec)
 
     assert exc_info.value.errors[0].to_dict() == {
+        "code": "semantic_error",
         "message": (
             "Endpoint 'listOrders' filters reference missing fields: "
             "['missing']. Valid fields: ['id']"
@@ -311,6 +315,7 @@ def test_validate_semantics_rejects_filters_on_non_collection_get_endpoints() ->
         validate_semantics(spec)
 
     assert exc_info.value.errors[0].to_dict() == {
+        "code": "semantic_error",
         "message": (
             "Endpoint 'getOrderById' defines filters but is not a collection GET endpoint."
         ),
