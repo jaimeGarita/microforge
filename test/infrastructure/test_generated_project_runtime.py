@@ -62,6 +62,14 @@ with TestClient(app) as client:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(tmp_path / "src")
     subprocess.run(
+        [sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+        cwd=tmp_path,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
         [sys.executable, "-c", script],
         cwd=tmp_path,
         env=environment,

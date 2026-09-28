@@ -20,6 +20,9 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.mappers import (
     MappersRenderer,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.migrations import (
+    MigrationsRenderer,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
 )
@@ -58,6 +61,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         self.api_routes_renderer = ApiRoutesRenderer(self.renderer)
         self.domain_models_renderer = DomainModelsRenderer(self.renderer)
         self.mappers_renderer = MappersRenderer(self.renderer)
+        self.migrations_renderer = MigrationsRenderer(self.renderer)
         self.orm_models_renderer = OrmModelsRenderer(self.renderer)
         self.providers_renderer = ProvidersRenderer(self.renderer)
         self.repository_ports_renderer = RepositoryPortsRenderer(self.renderer)
@@ -129,6 +133,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         files.extend(self.providers_renderer.render(spec))
         files.extend(self.api_routes_renderer.render(spec))
         files.extend(self.tests_renderer.render(spec))
+        files.extend(self.migrations_renderer.render(spec))
         return files
 
 

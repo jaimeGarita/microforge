@@ -5,10 +5,8 @@ from {{ package_name }}.infrastructure.inbound.api.errors import register_except
 {% for router in routers %}
 from {{ package_name }}.infrastructure.inbound.api.routes.{{ router.module_name }} import router as {{ router.router_variable }}
 {% endfor %}
-from {{ package_name }}.infrastructure.persistence.session import init_db
 
 settings = get_settings()
-init_db()
 
 app = FastAPI(
     title=settings.app_name,

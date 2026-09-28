@@ -30,6 +30,10 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert set(by_path) == {
         ".env.example",
         "README.md",
+        "alembic.ini",
+        "migrations/env.py",
+        "migrations/script.py.mako",
+        "migrations/versions/0001_initial_schema.py",
         "pyproject.toml",
         "src/orders_service/__init__.py",
         "src/orders_service/application/__init__.py",
@@ -83,10 +87,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "from orders_service.infrastructure.inbound.api.routes.order_routes import "
         "router as order_router" in by_path[main_path]
     )
-    assert (
-        "from orders_service.infrastructure.persistence.session import init_db"
-        in by_path[main_path]
-    )
+    assert "init_db" not in by_path[main_path]
     assert "from fastapi.middleware.cors import CORSMiddleware" in by_path[main_path]
     assert "allow_origins=settings.allowed_origins" in by_path[main_path]
     config = by_path["src/orders_service/config.py"]
@@ -94,8 +95,9 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert 'env_prefix="APP_"' in config
     assert 'database_url: str = "sqlite:///./app.db"' in config
     assert "pydantic-settings>=2.6" in by_path["pyproject.toml"]
+    assert "alembic>=1.14" in by_path["pyproject.toml"]
     assert "APP_DATABASE_URL=sqlite:///./app.db" in by_path[".env.example"]
-    assert "init_db()" in by_path[main_path]
+    assert "alembic upgrade head" in by_path["README.md"]
     assert 'app.include_router(order_router, prefix="/api/v1")' in by_path[main_path]
     assert '@app.get("/api/v1/health")' in by_path[main_path]
     repository_port = by_path[
@@ -171,7 +173,6 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         in by_path["src/orders_service/infrastructure/persistence/base.py"]
     )
     session = by_path["src/orders_service/infrastructure/persistence/session.py"]
-    assert "from orders_service.infrastructure.persistence.base import Base" in session
     assert "from orders_service.infrastructure.persistence import order as _order_model" in session
     assert "settings = get_settings()" in session
     assert "engine = create_engine(settings.database_url, connect_args=connect_args)" in session
@@ -179,8 +180,11 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "def get_session() -> Generator[Session, None, None]:" in session
     assert "session.commit()" in session
     assert "session.rollback()" in session
-    assert "def init_db() -> None:" in session
-    assert "Base.metadata.create_all(bind=engine)" in session
+    assert "def init_db() -> None:" not in session
+    assert "Base.metadata.create_all(bind=engine)" not in session
+    initial_migration = by_path["migrations/versions/0001_initial_schema.py"]
+    assert 'revision: str = "0001_initial"' in initial_migration
+    assert 'sa.Table(\n    "orders",' in initial_migration
     assert (
         "class OrderORM(Base):" in by_path["src/orders_service/infrastructure/persistence/order.py"]
     )
@@ -315,7 +319,7 @@ def test_all_relation_types_generate_sqlalchemy_mappings() -> None:
             compile(project_file.content, project_file.path, "exec")
 
 
-def test_all_relation_types_initialize_sqlalchemy(tmp_path: pathlib.Path) -> None:
+def test_all_relation_types_apply_initial_migration(tmp_path: pathlib.Path) -> None:
     spec = _load_spec("examples/spec_all_features.yaml")
     files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
     for project_file in files:
@@ -326,11 +330,12 @@ def test_all_relation_types_initialize_sqlalchemy(tmp_path: pathlib.Path) -> Non
     result = subprocess.run(
         [
             sys.executable,
+            "-m",
+            "alembic",
             "-c",
-            (
-                "from all_features_service.infrastructure.persistence.session "
-                "import init_db; init_db()"
-            ),
+            "alembic.ini",
+            "upgrade",
+            "head",
         ],
         cwd=tmp_path,
         env={"PYTHONPATH": str(tmp_path / "src")},

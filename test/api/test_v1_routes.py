@@ -141,6 +141,10 @@ def test_generate_project_returns_zip() -> None:
         assert sorted(archive.namelist()) == [
             ".env.example",
             "README.md",
+            "alembic.ini",
+            "migrations/env.py",
+            "migrations/script.py.mako",
+            "migrations/versions/0001_initial_schema.py",
             "pyproject.toml",
             "src/orders_service/__init__.py",
             "src/orders_service/application/__init__.py",

@@ -14,6 +14,10 @@ os.environ["APP_DATABASE_URL"] = f"sqlite:///{_DATABASE_PATH}"
 os.environ["APP_DEBUG"] = "false"
 
 from {{ package_name }}.main import app  # noqa: E402
+from {{ package_name }}.infrastructure.persistence.base import Base  # noqa: E402
+from {{ package_name }}.infrastructure.persistence.session import engine  # noqa: E402
+
+Base.metadata.create_all(bind=engine)
 
 
 @pytest.fixture
