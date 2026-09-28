@@ -28,6 +28,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     by_path = {project_file.path: project_file.content.decode("utf-8") for project_file in files}
 
     assert set(by_path) == {
+        ".env.example",
         "README.md",
         "pyproject.toml",
         "src/orders_service/__init__.py",
@@ -39,6 +40,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/application/use_cases/order/__init__.py",
         "src/orders_service/application/use_cases/order/find_orders_by_status.py",
         "src/orders_service/application/use_cases/order/list_orders.py",
+        "src/orders_service/config.py",
         "src/orders_service/domain/models/__init__.py",
         "src/orders_service/domain/__init__.py",
         "src/orders_service/domain/models/order.py",
@@ -62,11 +64,17 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/infrastructure/persistence/repositories/__init__.py",
         repository_port_path,
         "src/orders_service/main.py",
+        "tests/conftest.py",
+        "tests/test_config.py",
         "tests/test_health.py",
+        "tests/test_order_routes.py",
     }
     assert "# orders" in by_path["README.md"]
     assert 'name = "orders_service"' in by_path["pyproject.toml"]
-    assert 'app = FastAPI(title="orders API")' in by_path[main_path]
+    assert "settings = get_settings()" in by_path[main_path]
+    assert "title=settings.app_name" in by_path[main_path]
+    assert "version=settings.app_version" in by_path[main_path]
+    assert "debug=settings.debug" in by_path[main_path]
     assert (
         "from orders_service.infrastructure.inbound.api.routes.order_routes import "
         "router as order_router" in by_path[main_path]
@@ -76,7 +84,13 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         in by_path[main_path]
     )
     assert "from fastapi.middleware.cors import CORSMiddleware" in by_path[main_path]
-    assert "allow_origins=ALLOWED_ORIGINS" in by_path[main_path]
+    assert "allow_origins=settings.allowed_origins" in by_path[main_path]
+    config = by_path["src/orders_service/config.py"]
+    assert "class Settings(BaseSettings):" in config
+    assert 'env_prefix="APP_"' in config
+    assert 'database_url: str = "sqlite:///./app.db"' in config
+    assert "pydantic-settings>=2.6" in by_path["pyproject.toml"]
+    assert "APP_DATABASE_URL=sqlite:///./app.db" in by_path[".env.example"]
     assert "init_db()" in by_path[main_path]
     assert 'app.include_router(order_router, prefix="/api/v1")' in by_path[main_path]
     assert '@app.get("/api/v1/health")' in by_path[main_path]
@@ -155,8 +169,8 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     session = by_path["src/orders_service/infrastructure/persistence/session.py"]
     assert "from orders_service.infrastructure.persistence.base import Base" in session
     assert "from orders_service.infrastructure.persistence import order as _order_model" in session
-    assert 'DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")' in session
-    assert "engine = create_engine(DATABASE_URL, connect_args=connect_args)" in session
+    assert "settings = get_settings()" in session
+    assert "engine = create_engine(settings.database_url, connect_args=connect_args)" in session
     assert "SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)" in session
     assert "def get_session() -> Generator[Session, None, None]:" in session
     assert "session.commit()" in session
@@ -262,6 +276,8 @@ def test_all_relation_types_generate_sqlalchemy_mappings() -> None:
     category = by_path["src/all_features_service/infrastructure/persistence/category.py"]
     product = by_path["src/all_features_service/infrastructure/persistence/product.py"]
     detail = by_path["src/all_features_service/infrastructure/persistence/product_detail.py"]
+    generated_tests = by_path["tests/test_product_routes.py"]
+    generated_fixtures = by_path["tests/conftest.py"]
 
     assert (
         'products: Mapped[list["ProductORM"]] = relationship('
@@ -279,6 +295,13 @@ def test_all_relation_types_generate_sqlalchemy_mappings() -> None:
     ) in product
     assert 'ForeignKey("products.id"), unique=True' in detail
     assert 'product: Mapped["ProductORM"] = relationship("ProductORM", uselist=False)' in detail
+    assert "TemporaryDirectory()" in generated_fixtures
+    assert "def test_list_product_returns_empty_list" in generated_tests
+    assert "def test_product_crud_lifecycle" in generated_tests
+    assert 'created = client.post("/api/v1/products", json=payload)' in generated_tests
+    assert "CategoryORM(" in generated_tests
+    assert "client.patch(" in generated_tests
+    assert "client.delete(" in generated_tests
 
     for project_file in files:
         if project_file.path.endswith(".py"):

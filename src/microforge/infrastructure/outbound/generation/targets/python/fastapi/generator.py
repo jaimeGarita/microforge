@@ -38,6 +38,9 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.schemas import (
     SchemasRenderer,
 )
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.tests import (
+    TestsRenderer,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.use_cases import (
     UseCasesRenderer,
 )
@@ -60,6 +63,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         self.repository_ports_renderer = RepositoryPortsRenderer(self.renderer)
         self.repositories_renderer = RepositoriesRenderer(self.renderer)
         self.schemas_renderer = SchemasRenderer(self.renderer)
+        self.tests_renderer = TestsRenderer(self.renderer)
         self.use_cases_renderer = UseCasesRenderer(self.renderer)
 
     def generate(self, spec: SpecV1) -> list[ProjectFile]:
@@ -78,8 +82,12 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
                 content=_encode(self.renderer.render("main.py.j2", context)),
             ),
             ProjectFile(
-                path="tests/test_health.py",
-                content=_encode(self.renderer.render("tests/test_health.py.j2", context)),
+                path=f"src/{context['package_name']}/config.py",
+                content=_encode(self.renderer.render("config.py.j2", context)),
+            ),
+            ProjectFile(
+                path=".env.example",
+                content=_encode(self.renderer.render("env.example.j2", context)),
             ),
         ]
         files.extend(
@@ -104,6 +112,7 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
         files.extend(self.api_mappers_renderer.render(spec))
         files.extend(self.providers_renderer.render(spec))
         files.extend(self.api_routes_renderer.render(spec))
+        files.extend(self.tests_renderer.render(spec))
         return files
 
 
@@ -112,6 +121,7 @@ def _build_context(spec: SpecV1) -> dict[str, str]:
     package_name = package_name_for(spec.project_config.package_name)
     return {
         "app_title": f"{spec.service.name} API",
+        "app_version": "0.1.0",
         "api_base_path": spec.api.base_path,
         "description": description,
         "health_path": f"{spec.api.base_path}/health",

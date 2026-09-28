@@ -25,8 +25,9 @@ uvicorn {{ package_name }}.main:app --reload
 The API documentation is available at `http://127.0.0.1:8000/docs` and the
 health endpoint at `http://127.0.0.1:8000{{ health_path }}`.
 
-The service uses SQLite by default. Override it with the `DATABASE_URL`
-environment variable.
+Copy `.env.example` to `.env` to customize the service. Configuration uses
+the `APP_` prefix, including `APP_DATABASE_URL`, `APP_DEBUG`, and
+`APP_ALLOWED_ORIGINS`. SQLite is used by default.
 
 ## Quality checks
 

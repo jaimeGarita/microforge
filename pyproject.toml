@@ -28,6 +28,7 @@ dev = [
   "pytest-cov>=7.1.0",
   "sqlalchemy>=2.0",
   "types-PyYAML>=6.0",
+  "pydantic-settings>=2.15.0",
 ]
 
 [tool.ruff]

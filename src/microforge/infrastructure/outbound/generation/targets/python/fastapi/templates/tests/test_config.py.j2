@@ -1,0 +1,21 @@
+from pathlib import Path
+
+import pytest
+
+from {{ package_name }}.config import Settings
+
+
+def test_settings_read_prefixed_environment_variables(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("APP_DEBUG", "true")
+    monkeypatch.setenv("APP_DATABASE_URL", "sqlite:///./custom.db")
+    monkeypatch.setenv("APP_ALLOWED_ORIGINS", '["https://example.com"]')
+
+    settings = Settings()
+
+    assert settings.debug is True
+    assert settings.database_url == "sqlite:///./custom.db"
+    assert settings.allowed_origins == ["https://example.com"]
