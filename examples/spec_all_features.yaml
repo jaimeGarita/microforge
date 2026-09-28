@@ -84,6 +84,12 @@ models:
       - name: by_slug
         params:
           - {field: slug, op: eq}
+    relations:
+      - name: products
+        type: oneToMany
+        target: Product
+        localField: id
+        targetField: category_id
     features:
       repository: true
 
@@ -137,9 +143,14 @@ models:
         nullable: true
     relations:
       - name: category
-        type: manyToOne     # v1: manyToOne
+        type: manyToOne
         target: Category
         localField: category_id
+        targetField: id
+      - name: tags
+        type: manyToMany
+        target: Tag
+        localField: id
         targetField: id
     queries:
       - name: by_category_and_status
@@ -167,6 +178,33 @@ models:
     features:
       repository: true
 
+  - name: ProductDetail
+    fields:
+      - name: id
+        type: uuid
+        primaryKey: true
+      - name: product_id
+        type: uuid
+        unique: true
+      - name: technical_notes
+        type: string
+        nullable: true
+    relations:
+      - name: product
+        type: oneToOne
+        target: Product
+        localField: product_id
+        targetField: id
+
+  - name: Tag
+    fields:
+      - name: id
+        type: uuid
+        primaryKey: true
+      - name: name
+        type: string
+        unique: true
+
   # A model can explicitly opt out of repository generation if it has no queries.
   - name: DomainOnlyValue
     fields:
@@ -176,8 +214,9 @@ models:
     features:
       repository: false
 
-  # Only name and fields are required; queries, relations and features have defaults.
+  # Queries, relations and features are omitted here to exercise their defaults.
   - name: MinimalModel
     fields:
       - name: id
         type: uuid
+        primaryKey: true

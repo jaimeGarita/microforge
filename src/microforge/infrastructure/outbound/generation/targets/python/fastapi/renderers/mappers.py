@@ -8,6 +8,7 @@ from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import FieldSpec, ModelSpec, SpecV1
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
+    pluralize,
     to_snake_case,
 )
 from microforge.infrastructure.outbound.generation.template_renderer import TemplateRenderer
@@ -52,6 +53,7 @@ class MappersRenderer:
                 "class_name": f"{model.name}Mapper",
                 "domain_class_name": model.name,
                 "domain_module": to_snake_case(model.name),
+                "domain_collection_name": pluralize(to_snake_case(model.name)),
                 "fields": [_field_context(field) for field in model.fields],
                 "orm_class_name": f"{model.name}ORM",
                 "orm_module": to_snake_case(model.name),

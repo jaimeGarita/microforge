@@ -30,6 +30,7 @@ class RepositoryFilterExpressionContext:
     """SQLAlchemy filter expression prepared for repository templates."""
 
     expression: str
+    param_name: str
 
 
 def filter_expression_for(
@@ -45,34 +46,42 @@ def filter_expression_for(
         operator = INFIX_OPERATORS[filter_context.op]
         return RepositoryFilterExpressionContext(
             expression=f"{field_reference} {operator} {param_reference}",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.like:
         return RepositoryFilterExpressionContext(
             expression=f"{field_reference}.like({param_reference})",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.not_like:
         return RepositoryFilterExpressionContext(
             expression=f"~{field_reference}.like({param_reference})",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.in_:
         return RepositoryFilterExpressionContext(
             expression=f"{field_reference}.in_({param_reference})",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.not_in:
         return RepositoryFilterExpressionContext(
             expression=f"~{field_reference}.in_({param_reference})",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.contains:
         return RepositoryFilterExpressionContext(
             expression=f"{field_reference}.contains({param_reference})",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.starts_with:
         return RepositoryFilterExpressionContext(
             expression=f"{field_reference}.startswith({param_reference})",
+            param_name=param_reference,
         )
     if filter_context.op == QueryOp.ends_with:
         return RepositoryFilterExpressionContext(
             expression=f"{field_reference}.endswith({param_reference})",
+            param_name=param_reference,
         )
 
     raise ValueError(f"Unsupported query operator: {filter_context.op}")

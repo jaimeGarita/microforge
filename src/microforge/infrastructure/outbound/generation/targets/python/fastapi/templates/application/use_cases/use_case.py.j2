@@ -5,7 +5,7 @@
 
 {% endif -%}
 from {{ package_name }}.application.ports.repositories.{{ repository_module }} import {{ repository_class_name }}
-from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
+from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}  # noqa: F401
 
 
 class {{ class_name }}:

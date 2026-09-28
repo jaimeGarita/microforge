@@ -205,7 +205,9 @@ def test_generator_creates_non_get_routes() -> None:
     assert "payload: CustomerCreate" in routes or "payload: ProductCreate" in routes
     assert "use_case_callable" not in routes
     assert "CreateCustomer(**payload.model_dump())" not in routes
-    post_route = routes.split('@router.post("", response_model=CustomerRead)', maxsplit=1)[1]
+    post_route = routes.split(
+        '@router.post("", response_model=CustomerRead, status_code=201)', maxsplit=1
+    )[1]
     post_route = post_route.split(
         '@router.patch("/{id}", response_model=CustomerRead)', maxsplit=1
     )[0]
@@ -215,7 +217,9 @@ def test_generator_creates_non_get_routes() -> None:
         in routes
     )
     assert "domain = CustomerApiMapper.create_to_domain(payload)" in routes
-    assert "domain = CustomerApiMapper.update_to_domain(id, payload)" in routes
+    assert "payload: CustomerPatch" in routes
+    assert "payload.model_dump(exclude_unset=True)" in routes
+    assert 'detail="Customer not found"' in routes
     assert "return [CustomerRead(**record.__dict__) for record in records]" not in post_route
     assert "return CustomerApiMapper.to_read(record)" in post_route
     assert "return Response(status_code=204)" in routes
@@ -235,8 +239,7 @@ def test_generator_creates_non_get_routes() -> None:
     ]
     assert "def create_to_domain(payload: CustomerCreate) -> Customer:" in api_mapper
     assert "return Customer(id=None, **payload.model_dump())" in api_mapper
-    assert "def update_to_domain(id: int, payload: CustomerUpdate) -> Customer:" in api_mapper
-    assert "return Customer(id=id, **payload.model_dump())" in api_mapper
+    assert "def update_to_domain" not in api_mapper
     assert "def to_read(customer: Customer) -> CustomerRead:" in api_mapper
     assert "def to_read_list(" in api_mapper
 
@@ -252,24 +255,21 @@ def test_generator_creates_non_get_routes() -> None:
     assert "status_in: list[str] | None = Query(default=None)," in order_routes
     assert "total_amount_gte: Decimal | None = Query(default=None)," in order_routes
     assert (
-        "if customer_id is not None and status_in is not None and total_amount_gte is not None:"
+        "if customer_id is not None or status_in is not None or total_amount_gte is not None:"
         in order_routes
     )
     assert (
-        "records = find_orders_by_customer_id_and_status_in_and_total_amount_gte_use_case.execute("
+        "records = find_list_orders_use_case.execute("
         "customer_id, status_in, total_amount_gte)" in order_routes
     )
 
-    order_use_case = by_path[
-        "src/commerce_service/application/use_cases/order/"
-        "find_orders_by_customer_id_and_status_in_and_total_amount_gte.py"
-    ]
+    order_use_case = by_path["src/commerce_service/application/use_cases/order/find_list_orders.py"]
     assert (
-        "def execute(self, customer_id: UUID, status_in: list[str], "
-        "total_amount_gte: Decimal) -> list[Order]:" in order_use_case
+        "customer_id: UUID | None = None, status_in: list[str] | None = None, "
+        "total_amount_gte: Decimal | None = None" in order_use_case
     )
     assert (
-        "return self.repository.find_by_customer_id_and_status_in_and_total_amount_gte("
+        "return self.repository.find_list_orders("
         "customer_id, status_in, total_amount_gte)" in order_use_case
     )
 
@@ -277,8 +277,9 @@ def test_generator_creates_non_get_routes() -> None:
         "src/commerce_service/application/ports/repositories/order_repository.py"
     ]
     assert (
-        "def find_by_customer_id_and_status_in_and_total_amount_gte("
-        "self, customer_id: UUID, status_in: list[str], total_amount_gte: Decimal"
+        "def find_list_orders("
+        "self, customer_id: UUID | None = None, status_in: list[str] | None = None, "
+        "total_amount_gte: Decimal | None = None"
         ") -> list[Order]:" in order_repository_port
     )
 
@@ -286,8 +287,9 @@ def test_generator_creates_non_get_routes() -> None:
         "src/commerce_service/infrastructure/persistence/repositories/order_repository.py"
     ]
     assert (
-        "def find_by_customer_id_and_status_in_and_total_amount_gte("
-        "self, customer_id: UUID, status_in: list[str], total_amount_gte: Decimal"
+        "def find_list_orders("
+        "self, customer_id: UUID | None = None, status_in: list[str] | None = None, "
+        "total_amount_gte: Decimal | None = None"
         ") -> list[Order]:" in order_repository
     )
     assert ".where(OrderORM.customer_id == customer_id)" in order_repository
@@ -312,7 +314,11 @@ def test_generator_uses_declared_id_type() -> None:
 
     api_mapper = by_path["src/inventory_service/infrastructure/inbound/api/mappers/item_mapper.py"]
     assert "from uuid import uuid4" not in api_mapper
-    assert "def update_to_domain(id: int, payload: ItemUpdate) -> Item:" in api_mapper
+    assert "def update_to_domain" not in api_mapper
+    patch_schema = by_path[
+        "src/inventory_service/infrastructure/inbound/api/schemas/item/item_patch.py"
+    ]
+    assert "class ItemPatch(BaseModel):" in patch_schema
     assert "return Item(**payload.model_dump())" in api_mapper
 
     create_schema = by_path[

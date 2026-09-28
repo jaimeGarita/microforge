@@ -32,10 +32,12 @@ class RepositoryParameterContext:
 
     name: str
     python_type: str
+    optional: bool = False
 
     @property
     def signature(self) -> str:
-        return f"{self.name}: {self.python_type}"
+        suffix = " | None = None" if self.optional else ""
+        return f"{self.name}: {self.python_type}{suffix}"
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,7 @@ class RepositoryMethodContext:
     return_type: str
     filters: list[RepositoryFilterContext]
     imports: list[str]
+    filters_optional: bool = False
 
     @property
     def params(self) -> str:
@@ -124,13 +127,24 @@ def repository_method_for_endpoint(
             filters=[],
             imports=[],
         )
-    if action == EndpointAction.update:
+    if action == EndpointAction.replace_:
         return RepositoryMethodContext(
             name="update",
             parameters=[RepositoryParameterContext(to_snake_case(model.name), model.name)],
-            return_type=model.name,
+            return_type=f"{model.name} | None",
             filters=[],
             imports=[],
+        )
+    if action == EndpointAction.update:
+        return RepositoryMethodContext(
+            name="patch_by_id",
+            parameters=[
+                RepositoryParameterContext("id", id_type),
+                RepositoryParameterContext("changes", "dict[str, object]"),
+            ],
+            return_type=f"{model.name} | None",
+            filters=[],
+            imports=id_imports,
         )
     if action == EndpointAction.delete:
         return RepositoryMethodContext(
@@ -155,7 +169,11 @@ def _methods_for_endpoint_filters(
             or not endpoint_targets_model(endpoint, model)
         ):
             continue
-        methods.append(_method_for_filter_params(model, endpoint.filters))
+        methods.append(
+            _method_for_filter_params(
+                model, endpoint.filters, name=endpoint.name, filters_optional=True
+            )
+        )
     return methods
 
 
@@ -170,12 +188,14 @@ def _method_for_filter_params(
     model: ModelSpec,
     params: list[QueryParam],
     name: str | None = None,
+    filters_optional: bool = False,
 ) -> RepositoryMethodContext:
     fields = [_field_for_query_param(model, param) for param in params]
     method_parameters = [
         RepositoryParameterContext(
             name=_query_param_name(param),
             python_type=_query_param_type(param, field),
+            optional=filters_optional,
         )
         for param, field in zip(params, fields, strict=True)
     ]
@@ -192,6 +212,7 @@ def _method_for_filter_params(
             for param in params
         ],
         imports=imports_for_fields(fields),
+        filters_optional=filters_optional,
     )
 
 

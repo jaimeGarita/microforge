@@ -1,13 +1,38 @@
 {% for import_line in imports %}
 {{ import_line }}
 {% endfor %}
-{% if has_foreign_keys %}
+{% if related_models %}
+from typing import TYPE_CHECKING
+{% endif %}
+{% if has_associations %}
+from sqlalchemy import Column, ForeignKey, Table
+{% elif has_foreign_keys %}
 from sqlalchemy import ForeignKey
 {% endif %}
+{% if has_relationships %}
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+{% else %}
 from sqlalchemy.orm import Mapped, mapped_column
+{% endif %}
 
 from {{ package_name }}.infrastructure.persistence.base import Base
+{% if related_models %}
 
+if TYPE_CHECKING:
+{% for related_model in related_models %}
+    from {{ package_name }}.infrastructure.persistence.{{ related_model.module_name }} import {{ related_model.class_name }}
+{% endfor %}
+{% endif %}
+
+{% for association in associations %}
+{{ association.variable_name }} = Table(
+    "{{ association.table_name }}",
+    Base.metadata,
+    Column("{{ association.source_column }}", ForeignKey("{{ association.source_reference }}"), primary_key=True),
+    Column("{{ association.target_column }}", ForeignKey("{{ association.target_reference }}"), primary_key=True),
+)
+
+{% endfor %}
 
 class {{ class_name }}ORM(Base):
     __tablename__ = "{{ table_name }}"
@@ -17,5 +42,12 @@ class {{ class_name }}ORM(Base):
     {{ field.name }}: Mapped[{{ field.python_type }}] = mapped_column({{ field.column_args }})
 {% else %}
     {{ field.name }}: Mapped[{{ field.python_type }}] = mapped_column()
+{% endif %}
+{% endfor %}
+{% for relation in relations %}
+{% if relation.arguments %}
+    {{ relation.name }}: Mapped[{{ relation.python_type }}] = relationship("{{ relation.target_class }}", {{ relation.arguments }})
+{% else %}
+    {{ relation.name }}: Mapped[{{ relation.python_type }}] = relationship("{{ relation.target_class }}")
 {% endif %}
 {% endfor %}

@@ -17,6 +17,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
+    pluralize,
     to_snake_case,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.python_types import (
@@ -123,9 +124,12 @@ class ApiRoutesRenderer:
                                 ),
                                 "imports_query": any(route.query_routes for route in routes),
                                 "imports_http_exception": any(
-                                    route.has_id_param
-                                    and not route.body_schema_class
-                                    and route.method != "delete"
+                                    route.repository_method_name in {"patch_by_id", "update"}
+                                    or (
+                                        route.has_id_param
+                                        and not route.body_schema_class
+                                        and route.method != "delete"
+                                    )
                                     for route in routes
                                 ),
                                 "imports_api_mapper": any(
@@ -137,6 +141,9 @@ class ApiRoutesRenderer:
                                 "package_name": package_name,
                                 "read_schema_class": f"{model.name}Read",
                                 "routes": routes,
+                                "route_use_cases": _unique_route_use_cases(routes),
+                                "query_use_cases": _unique_query_use_cases(routes),
+                                "provider_names": _unique_provider_names(routes),
                                 "router_prefix": router_module.prefix,
                                 "router_tag": router_module.tag,
                                 "imports_read_schema": any(
@@ -150,8 +157,13 @@ class ApiRoutesRenderer:
                                     route.body_schema_class == f"{model.name}Update"
                                     for route in routes
                                 ),
+                                "imports_patch_schema": any(
+                                    route.body_schema_class == f"{model.name}Patch"
+                                    for route in routes
+                                ),
                                 "create_schema_class": f"{model.name}Create",
                                 "update_schema_class": f"{model.name}Update",
+                                "patch_schema_class": f"{model.name}Patch",
                             },
                         )
                     ),
@@ -174,9 +186,9 @@ def router_module_for_model(model: ModelSpec) -> RouterModuleContext:
     model_name = to_snake_case(model.name)
     return RouterModuleContext(
         module_name=f"{model_name}_routes",
-        prefix=f"/{model_name}s",
+        prefix=f"/{pluralize(model_name)}",
         router_variable=f"{model_name}_router",
-        tag=f"{model_name}s",
+        tag=pluralize(model_name),
     )
 
 
@@ -206,9 +218,13 @@ def _routes_for_model(
             body_schema_class = f"{model.name}Create"
             body_schema_file = f"{to_snake_case(model.name)}_create"
             response_model = f"{model.name}Read"
-        elif action == EndpointAction.update:
+        elif action == EndpointAction.replace_:
             body_schema_class = f"{model.name}Update"
             body_schema_file = f"{to_snake_case(model.name)}_update"
+            response_model = f"{model.name}Read"
+        elif action == EndpointAction.update:
+            body_schema_class = f"{model.name}Patch"
+            body_schema_file = f"{to_snake_case(model.name)}_patch"
             response_model = f"{model.name}Read"
         elif action == EndpointAction.delete:
             response_model = "None"
@@ -219,7 +235,7 @@ def _routes_for_model(
 
         routes.append(
             RouteContext(
-                function_name=use_case.filename,
+                function_name=to_snake_case(endpoint.name),
                 has_id_param=has_id_param,
                 path="/{id}" if has_id_param else "",
                 provider_name=f"provide_{use_case.filename}_use_case",
@@ -263,7 +279,9 @@ def _query_routes_for_model(
         param_names = [param.name for param in params]
         query_routes.append(
             QueryRouteContext(
-                condition=" and ".join(f"{param_name} is not None" for param_name in param_names),
+                condition=(" or " if method.filters_optional else " and ").join(
+                    f"{param_name} is not None" for param_name in param_names
+                ),
                 params=params,
                 provider_name=f"provide_{use_case.filename}_use_case",
                 use_case=use_case,
@@ -310,6 +328,29 @@ def _import_lines_for_routes(routes: list[RouteContext]) -> list[str]:
     return sorted(imports)
 
 
+def _unique_route_use_cases(routes: list[RouteContext]) -> list[UseCaseContext]:
+    return list({route.use_case.filename: route.use_case for route in routes}.values())
+
+
+def _unique_query_use_cases(routes: list[RouteContext]) -> list[UseCaseContext]:
+    return list(
+        {
+            query.use_case.filename: query.use_case
+            for route in routes
+            for query in route.query_routes
+        }.values()
+    )
+
+
+def _unique_provider_names(routes: list[RouteContext]) -> list[str]:
+    return list(
+        dict.fromkeys(
+            [route.provider_name for route in routes]
+            + [query.provider_name for route in routes for query in route.query_routes]
+        )
+    )
+
+
 def _return_statement_for_route(
     model: ModelSpec,
     has_id_param: bool,
@@ -318,7 +359,7 @@ def _return_statement_for_route(
     """Compute the return statement for a route depending on endpoint action."""
     if action == EndpointAction.delete:
         return "return Response(status_code=204)"
-    if action in {EndpointAction.create, EndpointAction.update}:
+    if action in {EndpointAction.create, EndpointAction.replace_, EndpointAction.update}:
         return f"return {model.name}ApiMapper.to_read(record)"
     if has_id_param:
         return f"return {model.name}ApiMapper.to_read(record)"

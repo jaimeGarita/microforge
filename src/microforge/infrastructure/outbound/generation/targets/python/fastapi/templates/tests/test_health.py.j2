@@ -1,0 +1,14 @@
+import os
+
+from fastapi.testclient import TestClient
+
+os.environ["DATABASE_URL"] = "sqlite://"
+
+from {{ package_name }}.main import app  # noqa: E402
+
+
+def test_health() -> None:
+    response = TestClient(app).get("{{ health_path }}")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}

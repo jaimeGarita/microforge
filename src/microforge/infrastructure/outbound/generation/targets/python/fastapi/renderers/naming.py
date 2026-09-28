@@ -23,4 +23,14 @@ def package_name_for(value: str) -> str:
 def table_name_for(model_name: str) -> str:
     """Return the default table name for a model."""
 
-    return f"{to_snake_case(model_name)}s"
+    return pluralize(to_snake_case(model_name))
+
+
+def pluralize(value: str) -> str:
+    """Pluralize the regular English forms used in generated identifiers."""
+
+    if value.endswith("y") and len(value) > 1 and value[-2] not in "aeiou":
+        return f"{value[:-1]}ies"
+    if value.endswith(("s", "x", "z", "ch", "sh")):
+        return f"{value}es"
+    return f"{value}s"

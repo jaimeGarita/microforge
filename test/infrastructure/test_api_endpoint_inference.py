@@ -15,7 +15,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
         ("GET", "/customers/{id}", EndpointAction.get),
         ("POST", "/customers", EndpointAction.create),
         ("PATCH", "/customers/{id}", EndpointAction.update),
-        ("PUT", "/customers/{id}", EndpointAction.update),
+        ("PUT", "/customers/{id}", EndpointAction.replace_),
         ("DELETE", "/customers/{id}", EndpointAction.delete),
     ],
 )

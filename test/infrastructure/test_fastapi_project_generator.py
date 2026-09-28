@@ -1,4 +1,6 @@
 import pathlib
+import subprocess
+import sys
 
 import yaml
 
@@ -28,6 +30,9 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert set(by_path) == {
         "README.md",
         "pyproject.toml",
+        "src/orders_service/__init__.py",
+        "src/orders_service/application/__init__.py",
+        "src/orders_service/application/ports/__init__.py",
         "src/orders_service/application/ports/repositories/__init__.py",
         "src/orders_service/application/ports/repositories/order_repository.py",
         "src/orders_service/application/use_cases/__init__.py",
@@ -35,8 +40,12 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/application/use_cases/order/find_orders_by_status.py",
         "src/orders_service/application/use_cases/order/list_orders.py",
         "src/orders_service/domain/models/__init__.py",
+        "src/orders_service/domain/__init__.py",
         "src/orders_service/domain/models/order.py",
         "src/orders_service/infrastructure/inbound/api/mappers/__init__.py",
+        "src/orders_service/infrastructure/__init__.py",
+        "src/orders_service/infrastructure/inbound/__init__.py",
+        "src/orders_service/infrastructure/inbound/api/__init__.py",
         "src/orders_service/infrastructure/inbound/api/mappers/order_mapper.py",
         "src/orders_service/infrastructure/inbound/api/providers.py",
         "src/orders_service/infrastructure/inbound/api/routes/__init__.py",
@@ -53,6 +62,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/infrastructure/persistence/repositories/__init__.py",
         repository_port_path,
         "src/orders_service/main.py",
+        "tests/test_health.py",
     }
     assert "# orders" in by_path["README.md"]
     assert 'name = "orders_service"' in by_path["pyproject.toml"]
@@ -241,3 +251,62 @@ def test_comprehensive_spec_generates_compilable_python() -> None:
     assert "placed_at_gte: datetime | None = Query(default=None)" in order_routes
     assert "placed_at_lte: datetime | None = Query(default=None)" in order_routes
     assert "placed_at_gte, placed_at_lte" in order_routes
+
+
+def test_all_relation_types_generate_sqlalchemy_mappings() -> None:
+    spec = _load_spec("examples/spec_all_features.yaml")
+    validate_semantics(spec)
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
+    by_path = {file.path: file.content.decode("utf-8") for file in files}
+
+    category = by_path["src/all_features_service/infrastructure/persistence/category.py"]
+    product = by_path["src/all_features_service/infrastructure/persistence/product.py"]
+    detail = by_path["src/all_features_service/infrastructure/persistence/product_detail.py"]
+
+    assert (
+        'products: Mapped[list["ProductORM"]] = relationship('
+        '"ProductORM", back_populates="category")'
+    ) in category
+    assert 'ForeignKey("categories.id")' in product
+    assert (
+        'category: Mapped["CategoryORM"] = relationship("CategoryORM", back_populates="products")'
+    ) in product
+    assert "product_tags_association = Table(" in product
+    assert 'ForeignKey("products.id")' in product
+    assert 'ForeignKey("tags.id")' in product
+    assert (
+        'tags: Mapped[list["TagORM"]] = relationship("TagORM", secondary=product_tags_association)'
+    ) in product
+    assert 'ForeignKey("products.id"), unique=True' in detail
+    assert 'product: Mapped["ProductORM"] = relationship("ProductORM", uselist=False)' in detail
+
+    for project_file in files:
+        if project_file.path.endswith(".py"):
+            compile(project_file.content, project_file.path, "exec")
+
+
+def test_all_relation_types_initialize_sqlalchemy(tmp_path: pathlib.Path) -> None:
+    spec = _load_spec("examples/spec_all_features.yaml")
+    files = fastapi_generator.PythonFastApiProjectGenerator().generate(spec)
+    for project_file in files:
+        destination = tmp_path / project_file.path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(project_file.content)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from all_features_service.infrastructure.persistence.session "
+                "import init_db; init_db()"
+            ),
+        ],
+        cwd=tmp_path,
+        env={"PYTHONPATH": str(tmp_path / "src")},
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr

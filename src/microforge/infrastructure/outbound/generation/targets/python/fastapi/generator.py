@@ -77,7 +77,23 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
                 path=f"src/{context['package_name']}/main.py",
                 content=_encode(self.renderer.render("main.py.j2", context)),
             ),
+            ProjectFile(
+                path="tests/test_health.py",
+                content=_encode(self.renderer.render("tests/test_health.py.j2", context)),
+            ),
         ]
+        files.extend(
+            ProjectFile(path=path, content=_encode(""))
+            for path in (
+                f"src/{context['package_name']}/__init__.py",
+                f"src/{context['package_name']}/application/__init__.py",
+                f"src/{context['package_name']}/application/ports/__init__.py",
+                f"src/{context['package_name']}/domain/__init__.py",
+                f"src/{context['package_name']}/infrastructure/__init__.py",
+                f"src/{context['package_name']}/infrastructure/inbound/__init__.py",
+                f"src/{context['package_name']}/infrastructure/inbound/api/__init__.py",
+            )
+        )
         files.extend(self.domain_models_renderer.render(spec))
         files.extend(self.repository_ports_renderer.render(spec))
         files.extend(self.use_cases_renderer.render(spec))

@@ -96,6 +96,15 @@ class SchemasRenderer:
                     fields=schema_plan.update_fields,
                 )
             )
+        if schema_plan.patch_fields:
+            files.append(
+                self._schema_file(
+                    path=f"{model_path}/{to_snake_case(model.name)}_patch.py",
+                    class_name=f"{model.name}Patch",
+                    fields=schema_plan.patch_fields,
+                    partial=True,
+                )
+            )
         return files
 
     def _schema_file(
@@ -103,6 +112,7 @@ class SchemasRenderer:
         path: str,
         class_name: str,
         fields: list[FieldSpec],
+        partial: bool = False,
     ) -> ProjectFile:
         return ProjectFile(
             path=path,
@@ -111,8 +121,9 @@ class SchemasRenderer:
                     "infrastructure/inbound/api/schemas/schema.py.j2",
                     {
                         "class_name": class_name,
-                        "fields": [_field_context(field) for field in fields],
-                        "imports_field": any(pydantic_field_args_for(field) for field in fields),
+                        "fields": [_field_context(field, partial=partial) for field in fields],
+                        "imports_field": partial
+                        or any(pydantic_field_args_for(field) for field in fields),
                         "imports": imports_for_fields(fields),
                     },
                 )
@@ -127,6 +138,7 @@ class SchemaPlan:
     create_fields: list[FieldSpec]
     read_fields: list[FieldSpec]
     update_fields: list[FieldSpec]
+    patch_fields: list[FieldSpec]
 
 
 def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPlan:
@@ -139,7 +151,8 @@ def _schema_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> SchemaPl
     return SchemaPlan(
         create_fields=writable_fields if EndpointAction.create in actions else [],
         read_fields=model.fields if actions - {EndpointAction.delete, None} else [],
-        update_fields=(writable_fields if EndpointAction.update in actions else []),
+        update_fields=(writable_fields if EndpointAction.replace_ in actions else []),
+        patch_fields=(writable_fields if EndpointAction.update in actions else []),
     )
 
 
@@ -147,12 +160,19 @@ def _writable_fields(model: ModelSpec) -> list[FieldSpec]:
     return [field for field in model.fields if not field_is_generated_on_create(field)]
 
 
-def _field_context(field: FieldSpec) -> SchemaFieldContext:
+def _field_context(field: FieldSpec, *, partial: bool = False) -> SchemaFieldContext:
     field_args = pydantic_field_args_for(field)
+    if partial:
+        field_args = [arg for arg in field_args if not arg.startswith("default=")]
+        field_args.insert(0, "default=None")
     return SchemaFieldContext(
         assignment=f" = Field({', '.join(field_args)})" if field_args else "",
         name=field.name,
-        python_type=nullable_python_type_for(field),
+        python_type=(
+            f"{nullable_python_type_for(field)} | None"
+            if partial and not field.nullable
+            else nullable_python_type_for(field)
+        ),
     )
 
 

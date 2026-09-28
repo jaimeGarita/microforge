@@ -65,3 +65,6 @@ class RelationType(str, Enum):
     """Supported relation types."""
 
     many_to_one = "manyToOne"
+    one_to_one = "oneToOne"
+    one_to_many = "oneToMany"
+    many_to_many = "manyToMany"

@@ -38,8 +38,21 @@ class {{ class_name }}({{ port_class_name }}):
         return {{ mapper_class_name }}.to_domain(record)
 {% elif method.name == "update" %}
 
-    def update(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ domain_class_name }}:
+    def update(self, {{ domain_module }}: {{ domain_class_name }}) -> {{ domain_class_name }} | None:
+        existing = self.session.get({{ orm_class_name }}, {{ domain_module }}.{{ id_field_name }})
+        if existing is None:
+            return None
         record = self.session.merge({{ mapper_class_name }}.to_orm({{ domain_module }}))
+        self.session.flush()
+        return {{ mapper_class_name }}.to_domain(record)
+{% elif method.name == "patch_by_id" %}
+
+    def patch_by_id(self, {{ method.params }}) -> {{ domain_class_name }} | None:
+        record = self.session.get({{ orm_class_name }}, id)
+        if record is None:
+            return None
+        for field_name, value in changes.items():
+            setattr(record, field_name, value)
         self.session.flush()
         return {{ mapper_class_name }}.to_domain(record)
 {% elif method.name == "delete_by_id" %}
@@ -52,12 +65,21 @@ class {{ class_name }}({{ port_class_name }}):
 {% elif method.filters %}
 
     def {{ method.name }}(self, {{ method.params }}) -> {{ method.return_type }}:
+{% if method.filters_optional %}
+        statement = select({{ orm_class_name }})
+{% for filter in method.filters %}
+        if {{ filter.param_name }} is not None:
+            statement = statement.where({{ filter.expression }})
+{% endfor %}
+        records = self.session.scalars(statement).all()
+{% else %}
         records = self.session.scalars(
             select({{ orm_class_name }})
 {% for filter in method.filters %}
             .where({{ filter.expression }})
 {% endfor %}
         ).all()
+{% endif %}
         return {{ mapper_class_name }}.to_domain_list(records)
 {% endif %}
 {% endfor %}

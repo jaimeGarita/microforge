@@ -3,7 +3,6 @@ from __future__ import annotations
 from copy import deepcopy
 
 import pytest
-from pydantic import ValidationError
 
 from microforge.domain.spec.errors import SpecValidationErrors
 from microforge.domain.spec.models import SpecV1
@@ -50,12 +49,52 @@ def test_validate_relations_accepts_valid_many_to_one() -> None:
     validate_semantics(spec)
 
 
-def test_relation_type_rejects_unsupported_cardinalities() -> None:
+def test_validate_relations_accepts_valid_one_to_one() -> None:
     data = _valid_relation_data()
-    data["models"][1]["relations"][0]["type"] = "manyToMany"  # type: ignore[index]
+    data["models"][1]["relations"][0]["type"] = "oneToOne"  # type: ignore[index]
 
-    with pytest.raises(ValidationError):
-        SpecV1.model_validate(data)
+    validate_semantics(SpecV1.model_validate(data))
+
+
+def test_validate_relations_accepts_valid_one_to_many() -> None:
+    data = _valid_relation_data()
+    relation = data["models"][1]["relations"][0]  # type: ignore[index]
+    relation.update(
+        {
+            "name": "orders",
+            "type": "oneToMany",
+            "target": "Order",
+            "localField": "id",
+            "targetField": "customer_id",
+        }
+    )
+    data["models"][0]["relations"] = [relation]  # type: ignore[index]
+    data["models"][1]["relations"] = []  # type: ignore[index]
+
+    validate_semantics(SpecV1.model_validate(data))
+
+
+def test_validate_relations_accepts_valid_many_to_many() -> None:
+    data = _valid_relation_data()
+    relation = data["models"][1]["relations"][0]  # type: ignore[index]
+    relation.update(
+        {
+            "name": "customers",
+            "type": "manyToMany",
+            "localField": "id",
+            "targetField": "id",
+        }
+    )
+
+    validate_semantics(SpecV1.model_validate(data))
+
+
+@pytest.mark.parametrize("relation_type", ["manyToOne", "oneToOne", "oneToMany", "manyToMany"])
+def test_relation_type_accepts_supported_cardinalities(relation_type: str) -> None:
+    data = _valid_relation_data()
+    data["models"][1]["relations"][0]["type"] = relation_type  # type: ignore[index]
+
+    SpecV1.model_validate(data)
 
 
 def test_validate_relations_rejects_missing_target_model() -> None:

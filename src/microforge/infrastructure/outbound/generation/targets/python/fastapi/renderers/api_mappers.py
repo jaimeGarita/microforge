@@ -18,6 +18,7 @@ from microforge.infrastructure.outbound.generation.targets.python.fastapi.render
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
+    pluralize,
     to_snake_case,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.python_types import (
@@ -80,6 +81,7 @@ class ApiMappersRenderer:
                 "create_schema_class": f"{model.name}Create",
                 "domain_class_name": model.name,
                 "domain_module": model_module,
+                "domain_collection_name": pluralize(model_module),
                 "has_create": plan.has_create,
                 "has_read": plan.has_read,
                 "has_update": plan.has_update,
@@ -104,7 +106,7 @@ def _mapper_plan_for(model: ModelSpec, endpoints: list[ApiEndpoint]) -> ApiMappe
     return ApiMapperPlan(
         has_create=EndpointAction.create in actions,
         has_read=bool(actions - {EndpointAction.delete, None}),
-        has_update=EndpointAction.update in actions,
+        has_update=EndpointAction.replace_ in actions,
     )
 
 

@@ -7,6 +7,7 @@ from enum import Enum
 from microforge.domain.spec.models import ApiEndpoint, ModelSpec
 from microforge.domain.spec.types import ApiHttpMethod
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
+    pluralize,
     to_snake_case,
 )
 
@@ -17,6 +18,7 @@ class EndpointAction(str, Enum):
     list = "list"
     get = "get"
     create = "create"
+    replace_ = "replace"
     update = "update"
     delete = "delete"
 
@@ -28,7 +30,7 @@ def endpoint_targets_model(endpoint: ApiEndpoint, model: ModelSpec) -> bool:
         return endpoint.model == model.name
 
     model_name = to_snake_case(model.name)
-    model_plural = f"{model_name}s"
+    model_plural = pluralize(model_name)
     endpoint_name = to_snake_case(endpoint.name)
     path_segments = {
         segment.replace("-", "_")
@@ -62,7 +64,9 @@ def infer_endpoint_action(endpoint: ApiEndpoint) -> EndpointAction | None:
         return EndpointAction.list
     if endpoint.method == ApiHttpMethod.post:
         return EndpointAction.create
-    if endpoint.method in {ApiHttpMethod.put, ApiHttpMethod.patch}:
+    if endpoint.method == ApiHttpMethod.put:
+        return EndpointAction.replace_
+    if endpoint.method == ApiHttpMethod.patch:
         return EndpointAction.update
     if endpoint.method == ApiHttpMethod.delete:
         return EndpointAction.delete

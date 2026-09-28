@@ -6,22 +6,19 @@
 {% endif -%}
 from fastapi import APIRouter, Depends{% if imports_http_exception %}, HTTPException{% endif %}{% if imports_query %}, Query{% endif %}{% if imports_response %}, Response{% endif %}
 
-{% for route in routes -%}
-from {{ package_name }}.application.use_cases.{{ model_module }}.{{ route.use_case.filename }} import (
-    {{ route.use_case.class_name }},
-)
-{% for query_route in route.query_routes -%}
-from {{ package_name }}.application.use_cases.{{ model_module }}.{{ query_route.use_case.filename }} import (
-    {{ query_route.use_case.class_name }},
+{% for use_case in route_use_cases -%}
+from {{ package_name }}.application.use_cases.{{ model_module }}.{{ use_case.filename }} import (
+    {{ use_case.class_name }},
 )
 {% endfor -%}
+{% for use_case in query_use_cases -%}
+from {{ package_name }}.application.use_cases.{{ model_module }}.{{ use_case.filename }} import (
+    {{ use_case.class_name }},
+)
 {% endfor -%}
 from {{ package_name }}.infrastructure.inbound.api.providers import (
-{% for route in routes %}
-    {{ route.provider_name }},
-{% for query_route in route.query_routes %}
-    {{ query_route.provider_name }},
-{% endfor %}
+{% for provider_name in provider_names %}
+    {{ provider_name }},
 {% endfor %}
 )
 
@@ -34,6 +31,9 @@ from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{
 {% if imports_update_schema %}
 from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_update import {{ update_schema_class }}
 {% endif %}
+{% if imports_patch_schema %}
+from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_patch import {{ patch_schema_class }}
+{% endif %}
 {% if imports_api_mapper %}
 from {{ package_name }}.infrastructure.inbound.api.mappers.{{ mapper_module }} import {{ mapper_class_name }}
 {% endif %}
@@ -42,7 +42,7 @@ router = APIRouter(prefix="{{ router_prefix }}", tags=["{{ router_tag }}"])
 {% for route in routes %}
 
 
-@router.{{ route.method }}("{{ route.path }}"{% if route.response_model != 'None' %}, response_model={{ route.response_model }}{% endif %})
+@router.{{ route.method }}("{{ route.path }}"{% if route.response_model != 'None' %}, response_model={{ route.response_model }}{% endif %}{% if route.method == 'post' %}, status_code=201{% endif %})
 def {{ route.function_name }}(
 {% if route.has_id_param %}
     id: {{ route.id_type }},
@@ -74,9 +74,18 @@ def {{ route.function_name }}(
         )
     {{ route.return_statement }}
 {% endif %}
+{% elif route.repository_method_name == "patch_by_id" %}
+    record = use_case.execute(id, payload.model_dump(exclude_unset=True))
+    if record is None:
+        raise HTTPException(status_code=404, detail="{{ route.domain_class_name }} not found")
+    {{ route.return_statement }}
 {% elif route.body_schema_class and route.has_id_param %}
     domain = {{ mapper_class_name }}.update_to_domain(id, payload)
     record = use_case.execute(domain)
+{% if route.repository_method_name == "update" %}
+    if record is None:
+        raise HTTPException(status_code=404, detail="{{ route.domain_class_name }} not found")
+{% endif %}
     {{ route.return_statement }}
 {% elif route.body_schema_class %}
     domain = {{ mapper_class_name }}.create_to_domain(payload)

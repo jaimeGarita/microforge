@@ -474,6 +474,6 @@ Suggested next steps:
 
 1. Add end-to-end runtime tests for generated services against SQLite.
 2. Add Alembic migration generation.
-3. Expand relation support with inverse navigation and additional cardinalities.
+3. Expand relation support with inverse navigation and `back_populates`.
 4. Add pagination and sorting for collection endpoints.
 5. Add a second target to validate the generator abstractions.

@@ -8,6 +8,7 @@ from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import ModelSpec, SpecV1
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
+    pluralize,
     to_snake_case,
 )
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.repository_methods import (
@@ -102,7 +103,7 @@ def use_case_for_method(model: ModelSpec, method: RepositoryMethodContext) -> Us
 
 
 def _use_case_class_name(model: ModelSpec, method: RepositoryMethodContext) -> str:
-    plural_model_name = f"{model.name}s"
+    plural_model_name = pluralize(model.name)
     if method.name == "find_all":
         return f"List{plural_model_name}UseCase"
     if method.name == "find_by_id":
@@ -111,16 +112,18 @@ def _use_case_class_name(model: ModelSpec, method: RepositoryMethodContext) -> s
         return f"Create{model.name}UseCase"
     if method.name == "update":
         return f"Update{model.name}UseCase"
+    if method.name == "patch_by_id":
+        return f"Patch{model.name}ByIdUseCase"
     if method.name == "delete_by_id":
         return f"Delete{model.name}ByIdUseCase"
     if method.name.startswith("find_by_"):
         suffix = _pascal_case(method.name.removeprefix("find_by_"))
         return f"Find{plural_model_name}By{suffix}UseCase"
-    return f"{_pascal_case(method.name)}{model.name}UseCase"
+    return f"{_pascal_case(method.name)}UseCase"
 
 
 def _use_case_filename(model: ModelSpec, method: RepositoryMethodContext) -> str:
-    plural_model_name = f"{to_snake_case(model.name)}s"
+    plural_model_name = pluralize(to_snake_case(model.name))
     if method.name == "find_all":
         return f"list_{plural_model_name}"
     if method.name == "find_by_id":
@@ -129,11 +132,13 @@ def _use_case_filename(model: ModelSpec, method: RepositoryMethodContext) -> str
         return f"create_{to_snake_case(model.name)}"
     if method.name == "update":
         return f"update_{to_snake_case(model.name)}"
+    if method.name == "patch_by_id":
+        return f"patch_{to_snake_case(model.name)}_by_id"
     if method.name == "delete_by_id":
         return f"delete_{to_snake_case(model.name)}_by_id"
     if method.name.startswith("find_by_"):
         return f"find_{plural_model_name}_by_{method.name.removeprefix('find_by_')}"
-    return f"{method.name}_{to_snake_case(model.name)}"
+    return method.name
 
 
 def _pascal_case(value: str) -> str:

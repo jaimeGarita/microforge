@@ -4,6 +4,7 @@ from collections import Counter
 
 from microforge.domain.spec.errors import SpecSemanticError
 from microforge.domain.spec.models import FieldSpec, ModelSpec, RelationSpec, SpecV1
+from microforge.domain.spec.types import RelationType
 
 
 def validate_relations(spec: SpecV1) -> list[SpecSemanticError]:
@@ -62,19 +63,42 @@ def _validate_relation(
                 model=source_model.name,
             )
         )
-    if not target_field.primary_key and not target_field.unique:
+    referenced_field = (
+        local_field if relation.relation_type == RelationType.one_to_many else target_field
+    )
+    referenced_model = (
+        source_model if relation.relation_type == RelationType.one_to_many else target_model
+    )
+    if not referenced_field.primary_key and not referenced_field.unique:
         errors.append(
             SpecSemanticError(
-                f"Relation '{relation.name}' target field "
-                f"'{target_model.name}.{target_field.name}' must be primary key or unique.",
+                f"Relation '{relation.name}' referenced field "
+                f"'{referenced_model.name}.{referenced_field.name}' must be primary key or unique.",
                 model=source_model.name,
             )
         )
-    if local_field.auto_increment:
+    if relation.relation_type == RelationType.many_to_many and not (
+        local_field.primary_key or local_field.unique
+    ):
         errors.append(
             SpecSemanticError(
-                f"Relation '{relation.name}' local field '{local_field.name}' cannot be "
-                "auto increment.",
+                f"Relation '{relation.name}' local association field "
+                f"'{source_model.name}.{local_field.name}' must be primary key or unique.",
+                model=source_model.name,
+            )
+        )
+    foreign_key_field = (
+        target_field
+        if relation.relation_type == RelationType.one_to_many
+        else local_field
+        if relation.relation_type in {RelationType.many_to_one, RelationType.one_to_one}
+        else None
+    )
+    if foreign_key_field is not None and foreign_key_field.auto_increment:
+        errors.append(
+            SpecSemanticError(
+                f"Relation '{relation.name}' foreign-key field "
+                f"'{foreign_key_field.name}' cannot be auto increment.",
                 model=source_model.name,
             )
         )
@@ -82,7 +106,11 @@ def _validate_relation(
 
 
 def _validate_local_field_usage(model: ModelSpec) -> list[SpecSemanticError]:
-    counts = Counter(relation.local_field for relation in model.relations)
+    counts = Counter(
+        relation.local_field
+        for relation in model.relations
+        if relation.relation_type in {RelationType.many_to_one, RelationType.one_to_one}
+    )
     return [
         SpecSemanticError(
             f"Local field '{field_name}' is used by multiple relations.", model=model.name

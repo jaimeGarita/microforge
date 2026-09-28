@@ -80,8 +80,8 @@ find_by_email_and_created_at_gte(...)
 
 ## Model Relations
 
-The current relation support is intentionally limited to `manyToOne`. The local field must be
-declared explicitly on the source model and must have the same type as the referenced field.
+Version 1 supports `manyToOne`, `oneToOne`, `oneToMany`, and `manyToMany`. Both fields must be
+declared explicitly and must have the same Microforge field type.
 
 ```yaml
 models:
@@ -106,20 +106,28 @@ models:
         targetField: id
 ```
 
-This generates a SQLAlchemy foreign key equivalent to:
+For `manyToOne` and `oneToOne`, `localField` owns the foreign key. `oneToOne` also generates a
+unique constraint. For `oneToMany`, `targetField` owns the foreign key and references
+`localField`. `manyToMany` generates an association table automatically.
+
+A `manyToOne` generates SQLAlchemy mappings equivalent to:
 
 ```python
 customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+customer: Mapped["CustomerORM"] = relationship("CustomerORM")
 ```
 
 Relation rules:
 
 - `target` must reference an existing model.
 - `localField` must exist on the model declaring the relation.
-- `targetField` must exist on the target model and be a primary key or unique.
+- The referenced side must be a primary key or unique.
 - Local and target fields must have the same Microforge field type.
-- A local field cannot be auto-incremented or reused by multiple relations.
-- Navigation properties and inverse relations are not generated yet.
+- A foreign-key field cannot be auto-incremented or reused by multiple owning relations.
+- ORM navigation properties are generated for every declared relation.
+- A `manyToMany` relation requires primary-key or unique fields on both sides.
+- Navigation is currently generated in the declared direction. Automatic inverse navigation and
+  `back_populates` are not inferred.
 
 ## Field Metadata
 

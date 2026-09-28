@@ -6,6 +6,9 @@ from dataclasses import dataclass
 
 from microforge.domain.generation.project_file import ProjectFile
 from microforge.domain.spec.models import ModelSpec, SpecV1
+from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.model_ids import (
+    id_field_for,
+)
 from microforge.infrastructure.outbound.generation.targets.python.fastapi.renderers.naming import (
     package_name_for,
     to_snake_case,
@@ -30,6 +33,7 @@ class RepositoryImplementationMethodContext:
     params: str
     return_type: str
     filters: list[RepositoryFilterExpressionContext]
+    filters_optional: bool
 
 
 class RepositoriesRenderer:
@@ -75,6 +79,9 @@ class RepositoriesRenderer:
                 "domain_class_name": model.name,
                 "domain_module": to_snake_case(model.name),
                 "imports": imports_for_repository_methods(methods),
+                "id_field_name": (
+                    id_field_for(model).name if id_field_for(model) is not None else "id"
+                ),
                 "mapper_class_name": f"{model.name}Mapper",
                 "mapper_module": f"{to_snake_case(model.name)}_mapper",
                 "methods": [
@@ -101,6 +108,7 @@ def _implementation_method(
             filter_expression_for(filter_context, orm_class_name)
             for filter_context in method.filters
         ],
+        filters_optional=method.filters_optional,
     )
 
 

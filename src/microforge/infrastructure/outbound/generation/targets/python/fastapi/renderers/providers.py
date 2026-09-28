@@ -101,6 +101,9 @@ def _providers_for_spec(spec: SpecV1) -> list[ProviderContext]:
             if method and method.name == "update":
                 body_schema_class = f"{model.name}Update"
                 body_schema_file = f"{to_snake_case(model.name)}_update"
+            if method and method.name == "patch_by_id":
+                body_schema_class = f"{model.name}Patch"
+                body_schema_file = f"{to_snake_case(model.name)}_patch"
 
             providers.append(
                 ProviderContext(
