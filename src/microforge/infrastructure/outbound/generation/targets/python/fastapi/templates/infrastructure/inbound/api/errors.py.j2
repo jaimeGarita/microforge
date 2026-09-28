@@ -1,0 +1,62 @@
+from typing import Any
+
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
+
+from {{ package_name }}.domain.errors import EntityNotFoundError
+from {{ package_name }}.infrastructure.inbound.api.schemas.error import ErrorDetail, ErrorResponse
+
+
+def _error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    details: Any = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content=jsonable_encoder(
+            ErrorResponse(
+                error=ErrorDetail(code=code, message=message, details=details),
+            ).model_dump()
+        ),
+    )
+
+
+async def entity_not_found_handler(request: Request, exc: Exception) -> JSONResponse:
+    del request
+    if not isinstance(exc, EntityNotFoundError):
+        raise exc
+    return _error_response(404, exc.code, str(exc))
+
+
+async def integrity_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    del request
+    if not isinstance(exc, IntegrityError):
+        raise exc
+    return _error_response(
+        409,
+        "entity_conflict",
+        "The operation conflicts with an existing resource",
+    )
+
+
+async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    del request
+    if not isinstance(exc, RequestValidationError):
+        raise exc
+    return _error_response(
+        422,
+        "validation_error",
+        "The request is invalid",
+        exc.errors(),
+    )
+
+
+def register_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(EntityNotFoundError, entity_not_found_handler)
+    app.add_exception_handler(IntegrityError, integrity_error_handler)
+    app.add_exception_handler(RequestValidationError, validation_error_handler)

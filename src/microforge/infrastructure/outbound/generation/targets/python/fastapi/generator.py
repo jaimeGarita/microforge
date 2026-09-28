@@ -86,6 +86,22 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
                 content=_encode(self.renderer.render("config.py.j2", context)),
             ),
             ProjectFile(
+                path=f"src/{context['package_name']}/domain/errors.py",
+                content=_encode(self.renderer.render("domain/errors.py.j2", context)),
+            ),
+            ProjectFile(
+                path=f"src/{context['package_name']}/infrastructure/inbound/api/errors.py",
+                content=_encode(
+                    self.renderer.render("infrastructure/inbound/api/errors.py.j2", context)
+                ),
+            ),
+            ProjectFile(
+                path=(f"src/{context['package_name']}/infrastructure/inbound/api/schemas/error.py"),
+                content=_encode(
+                    self.renderer.render("infrastructure/inbound/api/schemas/error.py.j2", context)
+                ),
+            ),
+            ProjectFile(
                 path=".env.example",
                 content=_encode(self.renderer.render("env.example.j2", context)),
             ),

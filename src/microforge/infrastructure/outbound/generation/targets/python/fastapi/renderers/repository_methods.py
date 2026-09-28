@@ -150,7 +150,7 @@ def repository_method_for_endpoint(
         return RepositoryMethodContext(
             name="delete_by_id",
             parameters=[RepositoryParameterContext("id", id_type)],
-            return_type="None",
+            return_type="bool",
             filters=[],
             imports=id_imports,
         )

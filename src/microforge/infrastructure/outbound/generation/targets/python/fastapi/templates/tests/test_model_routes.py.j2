@@ -54,4 +54,39 @@ def test_{{ model.model_module }}_crud_lifecycle(client: TestClient) -> None:
 
     missing = client.get(f"{{ model.list_path }}/{resource_id}")
     assert missing.status_code == 404
+    assert missing.json() == {
+        "error": {
+            "code": "entity_not_found",
+            "message": f"{{ model.model_name }} with id '{resource_id}' was not found",
+            "details": None,
+        }
+    }
+
+    missing_patch = client.patch(
+        f"{{ model.list_path }}/{resource_id}",
+        json={"{{ model.patch_field }}": {{ model.patch_value }}},
+    )
+    assert missing_patch.status_code == 404
+
+    missing_replace = client.put(f"{{ model.list_path }}/{resource_id}", json=payload)
+    assert missing_replace.status_code == 404
+
+    missing_delete = client.delete(f"{{ model.list_path }}/{resource_id}")
+    assert missing_delete.status_code == 404
+
+    invalid = client.post("{{ model.list_path }}", json={})
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "validation_error"
+
+    first = client.post("{{ model.list_path }}", json=payload)
+    assert first.status_code == 201, first.text
+    conflict = client.post("{{ model.list_path }}", json=payload)
+    assert conflict.status_code == 409
+    assert conflict.json() == {
+        "error": {
+            "code": "entity_conflict",
+            "message": "The operation conflicts with an existing resource",
+            "details": None,
+        }
+    }
 {% endif %}

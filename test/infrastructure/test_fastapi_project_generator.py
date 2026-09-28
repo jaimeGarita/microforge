@@ -41,18 +41,21 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/application/use_cases/order/find_orders_by_status.py",
         "src/orders_service/application/use_cases/order/list_orders.py",
         "src/orders_service/config.py",
-        "src/orders_service/domain/models/__init__.py",
         "src/orders_service/domain/__init__.py",
+        "src/orders_service/domain/errors.py",
+        "src/orders_service/domain/models/__init__.py",
         "src/orders_service/domain/models/order.py",
         "src/orders_service/infrastructure/inbound/api/mappers/__init__.py",
         "src/orders_service/infrastructure/__init__.py",
         "src/orders_service/infrastructure/inbound/__init__.py",
         "src/orders_service/infrastructure/inbound/api/__init__.py",
+        "src/orders_service/infrastructure/inbound/api/errors.py",
         "src/orders_service/infrastructure/inbound/api/mappers/order_mapper.py",
         "src/orders_service/infrastructure/inbound/api/providers.py",
         "src/orders_service/infrastructure/inbound/api/routes/__init__.py",
         "src/orders_service/infrastructure/inbound/api/routes/order_routes.py",
         "src/orders_service/infrastructure/inbound/api/schemas/__init__.py",
+        "src/orders_service/infrastructure/inbound/api/schemas/error.py",
         "src/orders_service/infrastructure/inbound/api/schemas/order/__init__.py",
         "src/orders_service/infrastructure/inbound/api/schemas/order/order_read.py",
         "src/orders_service/infrastructure/persistence/__init__.py",
@@ -72,6 +75,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "# orders" in by_path["README.md"]
     assert 'name = "orders_service"' in by_path["pyproject.toml"]
     assert "settings = get_settings()" in by_path[main_path]
+    assert "register_exception_handlers(app)" in by_path[main_path]
     assert "title=settings.app_name" in by_path[main_path]
     assert "version=settings.app_version" in by_path[main_path]
     assert "debug=settings.debug" in by_path[main_path]
@@ -302,6 +306,9 @@ def test_all_relation_types_generate_sqlalchemy_mappings() -> None:
     assert "CategoryORM(" in generated_tests
     assert "client.patch(" in generated_tests
     assert "client.delete(" in generated_tests
+    assert '"code": "entity_not_found"' in generated_tests
+    assert '"code": "entity_conflict"' in generated_tests
+    assert 'invalid.json()["error"]["code"] == "validation_error"' in generated_tests
 
     for project_file in files:
         if project_file.path.endswith(".py"):

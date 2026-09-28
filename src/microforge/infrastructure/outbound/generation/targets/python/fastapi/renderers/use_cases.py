@@ -76,6 +76,13 @@ class UseCasesRenderer:
                 "class_name": use_case.class_name,
                 "domain_class_name": model.name,
                 "domain_module": to_snake_case(model.name),
+                "raises_not_found": use_case.repository_method_name
+                in {"find_by_id", "update", "patch_by_id", "delete_by_id"},
+                "not_found_identifier": (
+                    f"{to_snake_case(model.name)}.id"
+                    if use_case.repository_method_name == "update"
+                    else "id"
+                ),
                 "imports": use_case.imports,
                 "package_name": package_name,
                 "params": use_case.params,
@@ -97,7 +104,9 @@ def use_case_for_method(model: ModelSpec, method: RepositoryMethodContext) -> Us
         params=method.params,
         repository_method_name=method.name,
         repository_param_names=", ".join(parameter.name for parameter in method.parameters),
-        return_type=method.return_type,
+        return_type=(
+            "None" if method.name == "delete_by_id" else method.return_type.removesuffix(" | None")
+        ),
         imports=method.imports,
     )
 

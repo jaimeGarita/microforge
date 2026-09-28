@@ -6,6 +6,9 @@
 {% endif -%}
 from {{ package_name }}.application.ports.repositories.{{ repository_module }} import {{ repository_class_name }}
 from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}  # noqa: F401
+{% if raises_not_found %}
+from {{ package_name }}.domain.errors import EntityNotFoundError
+{% endif %}
 
 
 class {{ class_name }}:
@@ -13,4 +16,19 @@ class {{ class_name }}:
         self.repository = repository
 
     def execute(self{% if params %}, {{ params }}{% endif %}) -> {{ return_type }}:
+{% if raises_not_found %}
+        result = self.repository.{{ repository_method_name }}({{ repository_param_names }})
+{% if repository_method_name == "delete_by_id" %}
+        if result is False:
+{% else %}
+        if result is None:
+{% endif %}
+            raise EntityNotFoundError("{{ domain_class_name }}", {{ not_found_identifier }})
+{% if repository_method_name == "delete_by_id" %}
+        return None
+{% else %}
+        return result
+{% endif %}
+{% else %}
         return self.repository.{{ repository_method_name }}({{ repository_param_names }})
+{% endif %}

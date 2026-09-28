@@ -123,15 +123,6 @@ class ApiRoutesRenderer:
                                     route.method == "delete" for route in routes
                                 ),
                                 "imports_query": any(route.query_routes for route in routes),
-                                "imports_http_exception": any(
-                                    route.repository_method_name in {"patch_by_id", "update"}
-                                    or (
-                                        route.has_id_param
-                                        and not route.body_schema_class
-                                        and route.method != "delete"
-                                    )
-                                    for route in routes
-                                ),
                                 "imports_api_mapper": any(
                                     route.method != "delete" for route in routes
                                 ),

@@ -57,11 +57,13 @@ class {{ class_name }}({{ port_class_name }}):
         return {{ mapper_class_name }}.to_domain(record)
 {% elif method.name == "delete_by_id" %}
 
-    def delete_by_id(self, {{ method.params }}) -> None:
+    def delete_by_id(self, {{ method.params }}) -> bool:
         record = self.session.get({{ orm_class_name }}, id)
-        if record is not None:
-            self.session.delete(record)
-            self.session.flush()
+        if record is None:
+            return False
+        self.session.delete(record)
+        self.session.flush()
+        return True
 {% elif method.filters %}
 
     def {{ method.name }}(self, {{ method.params }}) -> {{ method.return_type }}:

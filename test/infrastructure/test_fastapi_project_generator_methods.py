@@ -219,7 +219,11 @@ def test_generator_creates_non_get_routes() -> None:
     assert "domain = CustomerApiMapper.create_to_domain(payload)" in routes
     assert "payload: CustomerPatch" in routes
     assert "payload.model_dump(exclude_unset=True)" in routes
-    assert 'detail="Customer not found"' in routes
+    assert "HTTPException" not in routes
+    get_use_case = by_path[
+        "src/commerce_service/application/use_cases/customer/get_customer_by_id.py"
+    ]
+    assert 'raise EntityNotFoundError("Customer", id)' in get_use_case
     assert "return [CustomerRead(**record.__dict__) for record in records]" not in post_route
     assert "return CustomerApiMapper.to_read(record)" in post_route
     assert "return Response(status_code=204)" in routes
@@ -250,7 +254,7 @@ def test_generator_creates_non_get_routes() -> None:
     assert "return Product(id=uuid4(), **payload.model_dump())" in product_api_mapper
 
     order_routes = by_path["src/commerce_service/infrastructure/inbound/api/routes/order_routes.py"]
-    assert "from fastapi import APIRouter, Depends, HTTPException, Query" in order_routes
+    assert "from fastapi import APIRouter, Depends, Query" in order_routes
     assert "customer_id: UUID | None = Query(default=None)," in order_routes
     assert "status_in: list[str] | None = Query(default=None)," in order_routes
     assert "total_amount_gte: Decimal | None = Query(default=None)," in order_routes
@@ -330,13 +334,13 @@ def test_generator_uses_declared_id_type() -> None:
         "src/inventory_service/application/ports/repositories/item_repository.py"
     ]
     assert "def find_by_id(self, id: int) -> Item | None:" in repository_port
-    assert "def delete_by_id(self, id: int) -> None:" in repository_port
+    assert "def delete_by_id(self, id: int) -> bool:" in repository_port
 
     repository = by_path[
         "src/inventory_service/infrastructure/persistence/repositories/item_repository.py"
     ]
     assert "def find_by_id(self, id: int) -> Item | None:" in repository
-    assert "def delete_by_id(self, id: int) -> None:" in repository
+    assert "def delete_by_id(self, id: int) -> bool:" in repository
 
 
 def test_generator_omits_auto_increment_id_from_create_payload() -> None:

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from {{ package_name }}.config import get_settings
+from {{ package_name }}.infrastructure.inbound.api.errors import register_exception_handlers
 {% for router in routers %}
 from {{ package_name }}.infrastructure.inbound.api.routes.{{ router.module_name }} import router as {{ router.router_variable }}
 {% endfor %}
@@ -14,6 +15,7 @@ app = FastAPI(
     version=settings.app_version,
     debug=settings.debug,
 )
+register_exception_handlers(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,

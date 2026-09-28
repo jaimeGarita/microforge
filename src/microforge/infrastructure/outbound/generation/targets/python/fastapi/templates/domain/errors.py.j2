@@ -1,0 +1,15 @@
+class DomainError(Exception):
+    """Base error raised by the domain and application layers."""
+
+    code = "domain_error"
+
+
+class EntityNotFoundError(DomainError):
+    """Raised when an operation requires an entity that does not exist."""
+
+    code = "entity_not_found"
+
+    def __init__(self, entity: str, identifier: object):
+        self.entity = entity
+        self.identifier = identifier
+        super().__init__(f"{entity} with id '{identifier}' was not found")
