@@ -1,4 +1,7 @@
 from typing import Protocol
+{% if uses_pagination %}
+from {{ package_name }}.application.pagination import PageRequest, PageResult
+{% endif %}
 {% if imports %}
 
 {% for import_line in imports %}

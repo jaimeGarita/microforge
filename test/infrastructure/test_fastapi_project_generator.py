@@ -37,6 +37,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "pyproject.toml",
         "src/orders_service/__init__.py",
         "src/orders_service/application/__init__.py",
+        "src/orders_service/application/pagination.py",
         "src/orders_service/application/ports/__init__.py",
         "src/orders_service/application/ports/repositories/__init__.py",
         "src/orders_service/application/ports/repositories/order_repository.py",
@@ -55,6 +56,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/infrastructure/inbound/api/__init__.py",
         "src/orders_service/infrastructure/inbound/api/errors.py",
         "src/orders_service/infrastructure/inbound/api/mappers/order_mapper.py",
+        "src/orders_service/infrastructure/inbound/api/pagination.py",
         "src/orders_service/infrastructure/inbound/api/providers.py",
         "src/orders_service/infrastructure/inbound/api/routes/__init__.py",
         "src/orders_service/infrastructure/inbound/api/routes/order_routes.py",
@@ -62,6 +64,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/infrastructure/inbound/api/schemas/error.py",
         "src/orders_service/infrastructure/inbound/api/schemas/order/__init__.py",
         "src/orders_service/infrastructure/inbound/api/schemas/order/order_read.py",
+        "src/orders_service/infrastructure/inbound/api/schemas/page.py",
         "src/orders_service/infrastructure/persistence/__init__.py",
         "src/orders_service/infrastructure/persistence/base.py",
         "src/orders_service/infrastructure/persistence/mappers/__init__.py",
@@ -104,20 +107,25 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "src/orders_service/application/ports/repositories/order_repository.py"
     ]
     assert "class OrderRepositoryPort(Protocol):" in repository_port
-    assert "def find_all(self) -> list[Order]:" in repository_port
-    assert "def find_by_status(self, status: str) -> list[Order]:" in repository_port
+    assert "def find_all(self, page: PageRequest) -> PageResult[Order]:" in repository_port
+    assert (
+        "def find_by_status(self, page: PageRequest, status: str) -> PageResult[Order]:"
+        in repository_port
+    )
     assert "def find_by_id" not in repository_port
     assert "def save" not in repository_port
     list_orders = by_path["src/orders_service/application/use_cases/order/list_orders.py"]
     assert "class ListOrdersUseCase:" in list_orders
-    assert "def execute(self) -> list[Order]:" in list_orders
-    assert "return self.repository.find_all()" in list_orders
+    assert "def execute(self, page: PageRequest) -> PageResult[Order]:" in list_orders
+    assert "return self.repository.find_all(page)" in list_orders
     find_by_status = by_path[
         "src/orders_service/application/use_cases/order/find_orders_by_status.py"
     ]
     assert "class FindOrdersByStatusUseCase:" in find_by_status
-    assert "def execute(self, status: str) -> list[Order]:" in find_by_status
-    assert "return self.repository.find_by_status(status)" in find_by_status
+    assert (
+        "def execute(self, page: PageRequest, status: str) -> PageResult[Order]:" in find_by_status
+    )
+    assert "return self.repository.find_by_status(page, status)" in find_by_status
     providers = by_path["src/orders_service/infrastructure/inbound/api/providers.py"]
     assert "from fastapi import Depends" in providers
     assert "from sqlalchemy.orm import Session" in providers
@@ -133,7 +141,7 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
     assert "return FindOrdersByStatusUseCase(repository)" in providers
     routes = by_path["src/orders_service/infrastructure/inbound/api/routes/order_routes.py"]
     assert 'router = APIRouter(prefix="/orders", tags=["orders"])' in routes
-    assert '@router.get("", response_model=list[OrderRead])' in routes
+    assert '@router.get("", response_model=Page[OrderRead])' in routes
     assert "def list_orders(" in routes
     assert "from fastapi import APIRouter, Depends, Query" in routes
     assert "Depends(provide_list_orders_use_case)" in routes
@@ -143,12 +151,12 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "Depends(provide_find_orders_by_status_use_case),"
     ) in routes
     assert "if status is not None:" in routes
-    assert "records = find_orders_by_status_use_case.execute(status)" in routes
-    assert "records = use_case.execute()" in routes
+    assert "find_orders_by_status_use_case.execute(pagination.to_page_request(), status)" in routes
+    assert "result = use_case.execute(pagination.to_page_request())" in routes
     assert (
         "from orders_service.infrastructure.inbound.api.mappers.order_mapper import OrderApiMapper"
     ) in routes
-    assert "return OrderApiMapper.to_read_list(records)" in routes
+    assert "pagination.to_page(OrderApiMapper.to_read_list(result.items), result.total)" in routes
 
     api_mapper = by_path["src/orders_service/infrastructure/inbound/api/mappers/order_mapper.py"]
     assert "from collections.abc import Sequence" in api_mapper
@@ -218,10 +226,14 @@ def test_fastapi_project_generator_creates_minimal_project_files() -> None:
         "from orders_service.infrastructure.persistence.mappers.order_mapper import OrderMapper"
         in repository
     )
-    assert "def find_all(self) -> list[Order]:" in repository
-    assert "records = self.session.scalars(select(OrderORM)).all()" in repository
-    assert "return OrderMapper.to_domain_list(records)" in repository
-    assert "def find_by_status(self, status: str) -> list[Order]:" in repository
+    assert "def find_all(self, page: PageRequest) -> PageResult[Order]:" in repository
+    assert "statement.offset(page.offset).limit(page.limit)" in repository
+    assert "select(func.count()).select_from(statement.subquery())" in repository
+    assert "return PageResult(items=OrderMapper.to_domain_list(records), total=total)" in repository
+    assert (
+        "def find_by_status(self, page: PageRequest, status: str) -> PageResult[Order]:"
+        in repository
+    )
     assert ".where(OrderORM.status == status)" in repository
     assert "def _to_domain(self, record: OrderORM) -> Order:" not in repository
     assert "def _to_orm(self, order: Order) -> OrderORM:" not in repository

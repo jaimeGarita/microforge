@@ -26,6 +26,10 @@ uvicorn {{ package_name }}.main:app --reload
 The API documentation is available at `http://127.0.0.1:8000/docs` and the
 health endpoint at `http://127.0.0.1:8000{{ health_path }}`.
 
+Collection endpoints are paginated with `page` and `page_size` query parameters.
+Pages start at `1`, the default page size is `20`, and the maximum is `100`.
+Responses contain `items`, `page`, `page_size`, `total`, and `pages`.
+
 Copy `.env.example` to `.env` to customize the service. Configuration uses
 the `APP_` prefix, including `APP_DATABASE_URL`, `APP_DEBUG`, and
 `APP_ALLOWED_ORIGINS`. SQLite is used by default.

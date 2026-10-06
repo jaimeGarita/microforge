@@ -91,6 +91,8 @@ class UseCasesRenderer:
                 "repository_module": f"{to_snake_case(model.name)}_repository",
                 "repository_param_names": use_case.repository_param_names,
                 "return_type": use_case.return_type,
+                "uses_pagination": use_case.repository_method_name == "find_all"
+                or use_case.return_type.startswith("PageResult["),
             },
         )
 

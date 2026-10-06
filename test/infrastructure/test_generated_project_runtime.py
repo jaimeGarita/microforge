@@ -57,7 +57,13 @@ with TestClient(app) as client:
     assert health.headers['access-control-allow-origin'] == 'http://localhost:4321'
     items = client.get('/api/v1/items')
     assert items.status_code == 200, items.text
-    assert items.json() == []
+    assert items.json() == {
+        'items': [],
+        'page': 1,
+        'page_size': 20,
+        'total': 0,
+        'pages': 0,
+    }
 """
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(tmp_path / "src")

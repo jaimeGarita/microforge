@@ -61,6 +61,7 @@ class RepositoryPortsRenderer:
                 "model_class_name": model.name,
                 "model_module": to_snake_case(model.name),
                 "package_name": package_name,
+                "uses_pagination": any(method.uses_pagination for method in methods),
             },
         )
 

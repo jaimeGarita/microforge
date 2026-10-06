@@ -18,7 +18,20 @@ def test_list_{{ model.model_module }}_returns_empty_list(client: TestClient) ->
     response = client.get("{{ model.list_path }}")
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {
+        "items": [],
+        "page": 1,
+        "page_size": 20,
+        "total": 0,
+        "pages": 0,
+    }
+
+    invalid_page = client.get("{{ model.list_path }}", params={"page": 0})
+    assert invalid_page.status_code == 422
+    assert invalid_page.json()["error"]["code"] == "validation_error"
+
+    oversized_page = client.get("{{ model.list_path }}", params={"page_size": 101})
+    assert oversized_page.status_code == 422
 {% if model.supports_crud %}
 
 
@@ -89,4 +102,10 @@ def test_{{ model.model_module }}_crud_lifecycle(client: TestClient) -> None:
             "details": None,
         }
     }
+
+    page = client.get("{{ model.list_path }}", params={"page": 1, "page_size": 1})
+    assert page.status_code == 200
+    assert len(page.json()["items"]) == 1
+    assert page.json()["total"] == 1
+    assert page.json()["pages"] == 1
 {% endif %}

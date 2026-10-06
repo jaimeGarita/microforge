@@ -1,0 +1,34 @@
+from typing import TypeVar
+
+from fastapi import Query
+
+from {{ package_name }}.application.pagination import PageRequest
+from {{ package_name }}.infrastructure.inbound.api.schemas.page import Page
+
+T = TypeVar("T")
+
+
+class PaginationParams:
+    def __init__(
+        self,
+        page: int = Query(default=1, ge=1),
+        page_size: int = Query(default=20, ge=1, le=100),
+    ):
+        self.page = page
+        self.page_size = page_size
+
+    def to_page_request(self) -> PageRequest:
+        return PageRequest(
+            offset=(self.page - 1) * self.page_size,
+            limit=self.page_size,
+        )
+
+    def to_page(self, items: list[T], total: int) -> Page[T]:
+        pages = (total + self.page_size - 1) // self.page_size
+        return Page[T](
+            items=items,
+            page=self.page,
+            page_size=self.page_size,
+            total=total,
+            pages=pages,
+        )

@@ -21,6 +21,10 @@ from {{ package_name }}.infrastructure.inbound.api.providers import (
     {{ provider_name }},
 {% endfor %}
 )
+{% if imports_pagination %}
+from {{ package_name }}.infrastructure.inbound.api.pagination import PaginationParams
+from {{ package_name }}.infrastructure.inbound.api.schemas.page import Page
+{% endif %}
 
 {% if imports_read_schema %}
 from {{ package_name }}.infrastructure.inbound.api.schemas.{{ model_module }}.{{ model_module }}_read import {{ read_schema_class }}
@@ -53,6 +57,9 @@ def {{ route.function_name }}(
 {% for query_param in route.query_params %}
     {{ query_param.name }}: {{ query_param.python_type }} | None = Query(default=None),
 {% endfor %}
+{% if route.repository_method_name == "find_all" %}
+    pagination: PaginationParams = Depends(),
+{% endif %}
 {% for query_route in route.query_routes %}
     {{ query_route.use_case.filename }}_use_case: {{ query_route.use_case.class_name }} = Depends({{ query_route.provider_name }}),
 {% endfor %}
@@ -80,11 +87,11 @@ def {{ route.function_name }}(
 {% else %}
 {% for query_route in route.query_routes %}
     if {{ query_route.condition }}:
-        records = {{ query_route.use_case.filename }}_use_case.execute({{ query_route.use_case_param_names }})
-        return {{ mapper_class_name }}.to_read_list(records)
+        result = {{ query_route.use_case.filename }}_use_case.execute(pagination.to_page_request(), {{ query_route.use_case_param_names }})
+        {{ route.return_statement }}
 
 {% endfor %}
-    records = use_case.execute()
+    result = use_case.execute(pagination.to_page_request())
     {{ route.return_statement }}
 {% endif %}
 {% endfor %}

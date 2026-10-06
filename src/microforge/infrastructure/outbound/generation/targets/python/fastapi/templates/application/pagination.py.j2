@@ -1,0 +1,16 @@
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class PageRequest:
+    offset: int
+    limit: int
+
+
+@dataclass(frozen=True)
+class PageResult(Generic[T]):
+    items: list[T]
+    total: int

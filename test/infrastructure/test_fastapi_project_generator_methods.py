@@ -263,18 +263,18 @@ def test_generator_creates_non_get_routes() -> None:
         in order_routes
     )
     assert (
-        "records = find_list_orders_use_case.execute("
+        "result = find_list_orders_use_case.execute(pagination.to_page_request(), "
         "customer_id, status_in, total_amount_gte)" in order_routes
     )
 
     order_use_case = by_path["src/commerce_service/application/use_cases/order/find_list_orders.py"]
     assert (
-        "customer_id: UUID | None = None, status_in: list[str] | None = None, "
+        "page: PageRequest, customer_id: UUID | None = None, status_in: list[str] | None = None, "
         "total_amount_gte: Decimal | None = None" in order_use_case
     )
     assert (
         "return self.repository.find_list_orders("
-        "customer_id, status_in, total_amount_gte)" in order_use_case
+        "page, customer_id, status_in, total_amount_gte)" in order_use_case
     )
 
     order_repository_port = by_path[
@@ -282,9 +282,10 @@ def test_generator_creates_non_get_routes() -> None:
     ]
     assert (
         "def find_list_orders("
-        "self, customer_id: UUID | None = None, status_in: list[str] | None = None, "
+        "self, page: PageRequest, customer_id: UUID | None = None, "
+        "status_in: list[str] | None = None, "
         "total_amount_gte: Decimal | None = None"
-        ") -> list[Order]:" in order_repository_port
+        ") -> PageResult[Order]:" in order_repository_port
     )
 
     order_repository = by_path[
@@ -292,9 +293,10 @@ def test_generator_creates_non_get_routes() -> None:
     ]
     assert (
         "def find_list_orders("
-        "self, customer_id: UUID | None = None, status_in: list[str] | None = None, "
+        "self, page: PageRequest, customer_id: UUID | None = None, "
+        "status_in: list[str] | None = None, "
         "total_amount_gte: Decimal | None = None"
-        ") -> list[Order]:" in order_repository
+        ") -> PageResult[Order]:" in order_repository
     )
     assert ".where(OrderORM.customer_id == customer_id)" in order_repository
     assert ".where(OrderORM.status.in_(status_in))" in order_repository

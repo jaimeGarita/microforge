@@ -56,6 +56,11 @@ class RepositoryMethodContext:
         """Return the rendered Python parameter signature."""
         return ", ".join(parameter.signature for parameter in self.parameters)
 
+    @property
+    def uses_pagination(self) -> bool:
+        """Return whether this method consumes and returns pagination values."""
+        return self.name == "find_all" or bool(self.filters)
+
 
 def repository_methods_for(
     model: ModelSpec,
@@ -114,8 +119,8 @@ def repository_method_for_endpoint(
     if action == EndpointAction.list:
         return RepositoryMethodContext(
             name="find_all",
-            parameters=[],
-            return_type=f"list[{model.name}]",
+            parameters=[RepositoryParameterContext("page", "PageRequest")],
+            return_type=f"PageResult[{model.name}]",
             filters=[],
             imports=[],
         )
@@ -191,7 +196,7 @@ def _method_for_filter_params(
     filters_optional: bool = False,
 ) -> RepositoryMethodContext:
     fields = [_field_for_query_param(model, param) for param in params]
-    method_parameters = [
+    method_parameters = [RepositoryParameterContext("page", "PageRequest")] + [
         RepositoryParameterContext(
             name=_query_param_name(param),
             python_type=_query_param_type(param, field),
@@ -202,7 +207,7 @@ def _method_for_filter_params(
     return RepositoryMethodContext(
         name=_query_method_name(name or _query_name_for_params(params)),
         parameters=method_parameters,
-        return_type=f"list[{model.name}]",
+        return_type=f"PageResult[{model.name}]",
         filters=[
             RepositoryFilterContext(
                 field_name=param.field,

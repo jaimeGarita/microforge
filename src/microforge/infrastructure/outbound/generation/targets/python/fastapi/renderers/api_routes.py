@@ -123,6 +123,9 @@ class ApiRoutesRenderer:
                                     route.method == "delete" for route in routes
                                 ),
                                 "imports_query": any(route.query_routes for route in routes),
+                                "imports_pagination": any(
+                                    route.repository_method_name == "find_all" for route in routes
+                                ),
                                 "imports_api_mapper": any(
                                     route.method != "delete" for route in routes
                                 ),
@@ -222,7 +225,7 @@ def _routes_for_model(
         elif action == EndpointAction.get:
             response_model = f"{model.name}Read"
         else:
-            response_model = f"list[{model.name}Read]"
+            response_model = f"Page[{model.name}Read]"
 
         routes.append(
             RouteContext(
@@ -289,6 +292,7 @@ def _query_params_for_method(method: RepositoryMethodContext) -> list[QueryParam
             python_type=parameter.python_type,
         )
         for parameter in method.parameters
+        if parameter.name != "page"
     ]
 
 
@@ -354,7 +358,9 @@ def _return_statement_for_route(
         return f"return {model.name}ApiMapper.to_read(record)"
     if has_id_param:
         return f"return {model.name}ApiMapper.to_read(record)"
-    return f"return {model.name}ApiMapper.to_read_list(records)"
+    return (
+        f"return pagination.to_page({model.name}ApiMapper.to_read_list(result.items), result.total)"
+    )
 
 
 def _encode(content: str) -> bytes:

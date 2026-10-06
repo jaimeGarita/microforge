@@ -92,6 +92,7 @@ class RepositoriesRenderer:
                 "package_name": package_name,
                 "port_class_name": f"{model.name}RepositoryPort",
                 "port_module": f"{to_snake_case(model.name)}_repository",
+                "uses_pagination": any(method.uses_pagination for method in methods),
             },
         )
 

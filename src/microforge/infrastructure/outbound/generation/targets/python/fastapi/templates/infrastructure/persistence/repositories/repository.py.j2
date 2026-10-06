@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import {% if uses_pagination %}func, {% endif %}select
 from sqlalchemy.orm import Session
 {% if imports %}
 
@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 {% endif %}
 
 from {{ package_name }}.application.ports.repositories.{{ port_module }} import {{ port_class_name }}
+{% if uses_pagination %}
+from {{ package_name }}.application.pagination import PageRequest, PageResult
+{% endif %}
 from {{ package_name }}.domain.models.{{ domain_module }} import {{ domain_class_name }}
 from {{ package_name }}.infrastructure.persistence.{{ orm_module }} import {{ orm_class_name }}
 from {{ package_name }}.infrastructure.persistence.mappers.{{ mapper_module }} import {{ mapper_class_name }}
@@ -19,9 +22,15 @@ class {{ class_name }}({{ port_class_name }}):
 {% for method in methods %}
 {% if method.name == "find_all" %}
 
-    def find_all(self) -> list[{{ domain_class_name }}]:
-        records = self.session.scalars(select({{ orm_class_name }})).all()
-        return {{ mapper_class_name }}.to_domain_list(records)
+    def find_all(self, page: PageRequest) -> PageResult[{{ domain_class_name }}]:
+        statement = select({{ orm_class_name }}).order_by({{ orm_class_name }}.{{ id_field_name }})
+        total = self.session.scalar(
+            select(func.count()).select_from(statement.subquery())
+        ) or 0
+        records = self.session.scalars(
+            statement.offset(page.offset).limit(page.limit)
+        ).all()
+        return PageResult(items={{ mapper_class_name }}.to_domain_list(records), total=total)
 {% elif method.name == "find_by_id" %}
 
     def find_by_id(self, {{ method.params }}) -> {{ domain_class_name }} | None:
@@ -68,20 +77,32 @@ class {{ class_name }}({{ port_class_name }}):
 
     def {{ method.name }}(self, {{ method.params }}) -> {{ method.return_type }}:
 {% if method.filters_optional %}
-        statement = select({{ orm_class_name }})
+        statement = select({{ orm_class_name }}).order_by({{ orm_class_name }}.{{ id_field_name }})
 {% for filter in method.filters %}
         if {{ filter.param_name }} is not None:
             statement = statement.where({{ filter.expression }})
 {% endfor %}
-        records = self.session.scalars(statement).all()
-{% else %}
+        total = self.session.scalar(
+            select(func.count()).select_from(statement.subquery())
+        ) or 0
         records = self.session.scalars(
+            statement.offset(page.offset).limit(page.limit)
+        ).all()
+{% else %}
+        statement = (
             select({{ orm_class_name }})
 {% for filter in method.filters %}
             .where({{ filter.expression }})
 {% endfor %}
+            .order_by({{ orm_class_name }}.{{ id_field_name }})
+        )
+        total = self.session.scalar(
+            select(func.count()).select_from(statement.subquery())
+        ) or 0
+        records = self.session.scalars(
+            statement.offset(page.offset).limit(page.limit)
         ).all()
 {% endif %}
-        return {{ mapper_class_name }}.to_domain_list(records)
+        return PageResult(items={{ mapper_class_name }}.to_domain_list(records), total=total)
 {% endif %}
 {% endfor %}

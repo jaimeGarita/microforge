@@ -94,6 +94,16 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
                 content=_encode(self.renderer.render("domain/errors.py.j2", context)),
             ),
             ProjectFile(
+                path=f"src/{context['package_name']}/application/pagination.py",
+                content=_encode(self.renderer.render("application/pagination.py.j2", context)),
+            ),
+            ProjectFile(
+                path=f"src/{context['package_name']}/infrastructure/inbound/api/pagination.py",
+                content=_encode(
+                    self.renderer.render("infrastructure/inbound/api/pagination.py.j2", context)
+                ),
+            ),
+            ProjectFile(
                 path=f"src/{context['package_name']}/infrastructure/inbound/api/errors.py",
                 content=_encode(
                     self.renderer.render("infrastructure/inbound/api/errors.py.j2", context)
@@ -103,6 +113,12 @@ class PythonFastApiProjectGenerator(ProjectGeneratorPort):
                 path=(f"src/{context['package_name']}/infrastructure/inbound/api/schemas/error.py"),
                 content=_encode(
                     self.renderer.render("infrastructure/inbound/api/schemas/error.py.j2", context)
+                ),
+            ),
+            ProjectFile(
+                path=f"src/{context['package_name']}/infrastructure/inbound/api/schemas/page.py",
+                content=_encode(
+                    self.renderer.render("infrastructure/inbound/api/schemas/page.py.j2", context)
                 ),
             ),
             ProjectFile(
