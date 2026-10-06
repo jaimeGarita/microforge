@@ -5,6 +5,7 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 
 from main import app
+from microforge.infrastructure.inbound.api.v1.spec_providers import get_recommend_spec_port
 
 
 def _read_bytes(path: str) -> bytes:
@@ -35,6 +36,57 @@ def test_validate_accepts_valid_yaml() -> None:
     )
     assert response.status_code == 200
     assert response.json() == {"ok": True}
+
+
+def test_recommend_endpoint_passes_yaml_bytes_to_use_case() -> None:
+    class StubRecommendSpec:
+        def run_bytes(self, data: bytes) -> dict[str, object]:
+            assert data == _read_bytes("examples/spec_valid.yaml")
+            return {"recommendations": []}
+
+    app.dependency_overrides[get_recommend_spec_port] = StubRecommendSpec
+    try:
+        response = TestClient(app).post(
+            "/api/v1/spec/recommend",
+            files={
+                "file": (
+                    "spec_valid.yaml",
+                    _read_bytes("examples/spec_valid.yaml"),
+                    "application/yaml",
+                )
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(get_recommend_spec_port, None)
+
+    assert response.status_code == 200
+    assert response.json() == {"recommendations": []}
+
+
+def test_recommend_endpoint_maps_unavailable_provider_to_503() -> None:
+    from microforge.application.spec.errors import SpecAdvisorUnavailableError
+
+    class UnavailableAdvisor:
+        def run_bytes(self, data: bytes) -> dict[str, object]:
+            raise SpecAdvisorUnavailableError("Jev recommendations are not configured.")
+
+    app.dependency_overrides[get_recommend_spec_port] = UnavailableAdvisor
+    try:
+        response = TestClient(app).post(
+            "/api/v1/spec/recommend",
+            files={
+                "file": (
+                    "spec_valid.yaml",
+                    _read_bytes("examples/spec_valid.yaml"),
+                    "application/yaml",
+                )
+            },
+        )
+    finally:
+        app.dependency_overrides.pop(get_recommend_spec_port, None)
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "recommendation_provider_unavailable"
 
 
 def test_validate_accepts_all_supported_features_example() -> None:

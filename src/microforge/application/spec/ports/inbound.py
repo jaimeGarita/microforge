@@ -9,3 +9,9 @@ class ValidateSpecPort(Protocol):
     """Input contract used by inbound adapters to validate specs."""
 
     def run_bytes(self, data: bytes) -> None: ...
+
+
+class RecommendSpecPort(Protocol):
+    """Input contract used by inbound adapters to request spec recommendations."""
+
+    def run_bytes(self, data: bytes) -> dict[str, object]: ...

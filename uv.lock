@@ -473,6 +473,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "python-multipart" },
     { name = "pyyaml" },
@@ -482,7 +483,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "alembic" },
-    { name = "httpx" },
     { name = "mypy" },
     { name = "pydantic-settings" },
     { name = "pytest" },
@@ -496,6 +496,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.26" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "pyyaml", specifier = ">=6.0" },
@@ -505,7 +506,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "alembic", specifier = ">=1.20.0" },
-    { name = "httpx", specifier = ">=0.26" },
     { name = "mypy", specifier = ">=1.12" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "pytest", specifier = ">=8.3" },

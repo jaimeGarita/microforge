@@ -8,10 +8,14 @@ from typing import Annotated, NoReturn
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 
 from microforge.application.generation.ports.inbound import GenerateProjectPort
-from microforge.application.spec.ports.inbound import ValidateSpecPort
+from microforge.application.spec.errors import SpecAdvisorUnavailableError
+from microforge.application.spec.ports.inbound import RecommendSpecPort, ValidateSpecPort
 from microforge.domain.spec.errors import SpecError, SpecFormatError, SpecValidationErrors
-from microforge.infrastructure.inbound.api.v1.providers import (
+from microforge.infrastructure.inbound.api.v1.generation_providers import (
     get_generate_project_port,
+)
+from microforge.infrastructure.inbound.api.v1.spec_providers import (
+    get_recommend_spec_port,
     get_validate_spec_port,
 )
 
@@ -38,6 +42,28 @@ async def validate_spec(
     except SpecError as exc:
         _raise_spec_http_error(exc)
     return {"ok": True}
+
+
+@router.post("/spec/recommend")
+async def recommend_spec(
+    file: Annotated[UploadFile, File(...)],
+    service: Annotated[RecommendSpecPort, Depends(get_recommend_spec_port)],
+) -> dict[str, object]:
+    """Request recommendations for a YAML spec."""
+    content = await _read_yaml_upload(file)
+    try:
+        return service.run_bytes(content)
+    except SpecAdvisorUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "recommendation_provider_unavailable",
+                "message": str(exc),
+                "errors": [],
+            },
+        ) from exc
+    except SpecError as exc:
+        _raise_spec_http_error(exc)
 
 
 @router.post("/spec/generate")
